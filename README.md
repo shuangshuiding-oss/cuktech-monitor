@@ -11,8 +11,11 @@
 ## 下载
 
 不想配环境就用便携包：[**Releases**](https://github.com/shuangshuiding-oss/cuktech-monitor/releases/latest)
-里下 `酷态科10号Ultra-便携版-vX.Y.Z-自解压.exe`，双击解压即用 —— 自带 Node 与 Python 运行时，
-目标机器不需要装任何东西。
+里下 `Cuktech10Ultra-Portable-vX.Y.Z-Setup.exe`（约 119 MB），双击解压即用 —— 自带 Node 与
+Python 运行时，目标机器不需要装任何东西。
+
+> 本地打包出来的文件名是中文的（`酷态科10号Ultra-便携版-vX.Y.Z-自解压.exe`）；
+> Release 附件改成英文名，是因为 GitHub 会把非 ASCII 字符从附件名里剔掉。
 
 想从源码跑，见下面「从源码跑」。
 
