@@ -1,0 +1,61 @@
+# ---------------- 运行时数据（含隐私：BLE 密钥 / 用电历史 / 设备 MAC） ----------------
+# data/ 里是**你自己的**东西：cuktech.token 是这台充电头的 BLE 密钥，
+# history/env-history 是几个月的用电与温湿度记录。公开仓库绝不能带。
+data/
+cuktech.token
+fan.token
+*.token
+qr.png
+qr-fw.png
+qr-state.json
+app.log
+ident.log
+auto-off.jsonl
+probe-*.jsonl
+
+# ---------------- 构建产物（走 GitHub Releases，不进仓库） ----------------
+dist/
+node_modules/
+.venv/
+runtime/
+electron/
+*.7z
+*.zip
+*.exe
+
+# ---------------- 逆向 / 第三方素材（版权不属于我，不能公开） ----------------
+# 米家 App 的 dex、厂商固件、反编译分析产物 —— 自己留着看，别推上去。
+apk/
+reva-work/
+firmware/
+*.dex
+*.bin
+*.elf
+*.pe
+
+# ---------------- 临时文件与备份 ----------------
+# 带自己设备 MAC 的原始截图（公开用的是 docs/preview.png，已裁掉顶部与日志面板）
+tools/screenshot.png
+
+# 任意 .bak（有些不是 .bak-vXXX 这种命名）
+*.bak
+
+*.bak-*
+*.out.txt
+__pycache__/
+*.pyc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------------- 固件/逆向相关脚本（默认不公开） ----------------
+# 这些不是"桌面监视器"运行所需的东西，而是我拆协议/抓固件时用的临时工具。
+# 想公开就删掉下面这几行（或写 !文件名 取消忽略）。
+cloud_fw_probe.py
+disasm.py
+fw_version.py
+probe_27.py
+scan_addrs.py
+sweep_swap.py

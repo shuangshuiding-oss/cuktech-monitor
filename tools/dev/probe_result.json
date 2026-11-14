@@ -1,0 +1,341 @@
+{
+ "t": "probe",
+ "ok": true,
+ "current": {
+  "1": 2816,
+  "2": 2816,
+  "3": 32768,
+  "4": 28672,
+  "5": 1,
+  "6": 4,
+  "7": 7,
+  "15": 0,
+  "13": 1,
+  "21": 50532111,
+  "19": 0,
+  "20": 1,
+  "17": 0,
+  "18": 0,
+  "16": 15
+ },
+ "gets": [
+  {
+   "label": "ours15",
+   "sent": 15,
+   "ok": true,
+   "got": 15,
+   "opcode": "9320",
+   "entries": [
+    {
+     "piid": 1,
+     "status": 0,
+     "value": 2816,
+     "type": "u32"
+    },
+    {
+     "piid": 2,
+     "status": 0,
+     "value": 2816,
+     "type": "u32"
+    },
+    {
+     "piid": 3,
+     "status": 0,
+     "value": 32768,
+     "type": "u32"
+    },
+    {
+     "piid": 4,
+     "status": 0,
+     "value": 28672,
+     "type": "u32"
+    },
+    {
+     "piid": 5,
+     "status": 0,
+     "value": 1,
+     "type": "u8"
+    },
+    {
+     "piid": 6,
+     "status": 0,
+     "value": 4,
+     "type": "u8"
+    },
+    {
+     "piid": 7,
+     "status": 0,
+     "value": 7,
+     "type": "u8"
+    },
+    {
+     "piid": 15,
+     "status": 0,
+     "value": 0,
+     "type": "bool"
+    },
+    {
+     "piid": 13,
+     "status": 0,
+     "value": 1,
+     "type": "u8"
+    },
+    {
+     "piid": 21,
+     "status": 0,
+     "value": 50532111,
+     "type": "u32"
+    },
+    {
+     "piid": 19,
+     "status": 0,
+     "value": 0,
+     "type": "bool"
+    },
+    {
+     "piid": 20,
+     "status": 0,
+     "value": 1,
+     "type": "bool"
+    },
+    {
+     "piid": 17,
+     "status": 0,
+     "value": 0,
+     "type": "u32"
+    },
+    {
+     "piid": 18,
+     "status": 0,
+     "value": 0,
+     "type": "u32"
+    },
+    {
+     "piid": 16,
+     "status": 0,
+     "value": 15,
+     "type": "u8"
+    }
+   ]
+  },
+  {
+   "label": "ours14（去掉 2.7）",
+   "sent": 14,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4100"
+  },
+  {
+   "label": "把 2.7 换成 2.08（15 项）",
+   "sent": 15,
+   "ok": true,
+   "got": 15,
+   "opcode": "9320",
+   "entries": [
+    {
+     "piid": 1,
+     "status": 0,
+     "value": 2816,
+     "type": "u32"
+    },
+    {
+     "piid": 2,
+     "status": 0,
+     "value": 2816,
+     "type": "u32"
+    },
+    {
+     "piid": 3,
+     "status": 0,
+     "value": 32768,
+     "type": "u32"
+    },
+    {
+     "piid": 4,
+     "status": 0,
+     "value": 28672,
+     "type": "u32"
+    },
+    {
+     "piid": 5,
+     "status": 0,
+     "value": 1,
+     "type": "u8"
+    },
+    {
+     "piid": 6,
+     "status": 0,
+     "value": 4,
+     "type": "u8"
+    },
+    {
+     "piid": 15,
+     "status": 0,
+     "value": 0,
+     "type": "bool"
+    },
+    {
+     "piid": 13,
+     "status": 0,
+     "value": 1,
+     "type": "u8"
+    },
+    {
+     "piid": 21,
+     "status": 0,
+     "value": 50532111,
+     "type": "u32"
+    },
+    {
+     "piid": 19,
+     "status": 0,
+     "value": 0,
+     "type": "bool"
+    },
+    {
+     "piid": 20,
+     "status": 0,
+     "value": 1,
+     "type": "bool"
+    },
+    {
+     "piid": 17,
+     "status": 0,
+     "value": 0,
+     "type": "u32"
+    },
+    {
+     "piid": 18,
+     "status": 0,
+     "value": 0,
+     "type": "u32"
+    },
+    {
+     "piid": 16,
+     "status": 0,
+     "value": 15,
+     "type": "u8"
+    },
+    {
+     "piid": 8,
+     "status": 0,
+     "value": 0,
+     "type": "u8"
+    }
+   ]
+  },
+  {
+   "label": "把 2.7 换成 2.09（15 项）",
+   "sent": 15,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4300"
+  },
+  {
+   "label": "把 2.7 换成 2.0a（15 项）",
+   "sent": 15,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4400"
+  },
+  {
+   "label": "把 2.7 换成 2.0b（15 项）",
+   "sent": 15,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4500"
+  },
+  {
+   "label": "把 2.7 换成 2.0c（15 项）",
+   "sent": 15,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4600"
+  },
+  {
+   "label": "第三方那套 15 项",
+   "sent": 15,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4700"
+  },
+  {
+   "label": "ours15 + 2.08（16 项）",
+   "sent": 16,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4800"
+  },
+  {
+   "label": "只问 2.8..2.12（5 项）",
+   "sent": 5,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4900"
+  },
+  {
+   "label": "只问 3 项",
+   "sent": 3,
+   "ok": false,
+   "error": "MiSessionError：timeout waiting for MIOT response seq=4a00"
+  }
+ ],
+ "writes": [
+  {
+   "step": "读 2.8（15 项替换形状）",
+   "ok": true,
+   "value": 0,
+   "piids": [
+    "2.01",
+    "2.02",
+    "2.03",
+    "2.04",
+    "2.05",
+    "2.06",
+    "2.08",
+    "2.0d",
+    "2.0f",
+    "2.10",
+    "2.11",
+    "2.12",
+    "2.13",
+    "2.14",
+    "2.15"
+   ]
+  },
+  {
+   "step": "写 2.06 息屏时间（回写原值）",
+   "want": 4,
+   "ok": true,
+   "readback": 4
+  },
+  {
+   "step": "写 2.15 协议开关（回写原值）",
+   "want": 50532111,
+   "ok": true,
+   "readback": 50532111
+  },
+  {
+   "step": "翻转 A 口 UFCS 位",
+   "before": "0x03030f0f",
+   "written": "0x02030f0f",
+   "ok": true,
+   "readback": "0x02030f0f",
+   "a_ufcs_now": false
+  },
+  {
+   "step": "还原 2.21",
+   "want": "0x03030f0f",
+   "ok": true,
+   "readback": "0x03030f0f"
+  }
+ ],
+ "pushes": [
+  {
+   "siid": 2,
+   "piid": 21,
+   "value": 33754895,
+   "type": "u32",
+   "raw": "0f200500040102150004500f0f0302"
+  },
+  {
+   "siid": 2,
+   "piid": 21,
+   "value": 50532111,
+   "type": "u32",
+   "raw": "0f200600040102150004500f0f0303"
+  }
+ ]
+}

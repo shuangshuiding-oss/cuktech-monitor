@@ -1,0 +1,164 @@
+{
+ "t": "enter-probe",
+ "ok": true,
+ "piid": "2.0e",
+ "dwell": 4.0,
+ "baseline": {
+  "items": 15,
+  "values": {
+   "2.01": 1792,
+   "2.02": 1526860545,
+   "2.03": 32768,
+   "2.04": 24576,
+   "2.05": 1,
+   "2.06": 4,
+   "2.07": 7,
+   "2.0d": 1,
+   "2.0f": 0,
+   "2.10": 15,
+   "2.11": 2331,
+   "2.12": 0,
+   "2.13": 0,
+   "2.14": 1,
+   "2.15": 50532111
+  }
+ },
+ "exists": {
+  "error": "MiSessionError: timeout waiting for MIOT response seq=5200",
+  "verdict": "整批超时 —— 按本机规则等于 2.0e 不存在"
+ },
+ "trials": [
+  {
+   "value": 1,
+   "at": "14:59:18",
+   "write": "sent",
+   "changed": null,
+   "push": {
+    "count": 1,
+    "piids": [
+     "2.02"
+    ],
+    "samples": [
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526860545,
+      "type": "u32",
+      "raw": "0f20030004010202000450010b025b"
+     }
+    ]
+   }
+  },
+  {
+   "value": 2,
+   "at": "14:59:24",
+   "write": "sent",
+   "changed": null,
+   "push": {
+    "count": 4,
+    "piids": [
+     "2.02"
+    ],
+    "samples": [
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526926081,
+      "type": "u32",
+      "raw": "0f20040004010202000450010b035b"
+     },
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526860545,
+      "type": "u32",
+      "raw": "0f20050004010202000450010b025b"
+     },
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526926081,
+      "type": "u32",
+      "raw": "0f20060004010202000450010b035b"
+     },
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526860545,
+      "type": "u32",
+      "raw": "0f20070004010202000450010b025b"
+     }
+    ]
+   }
+  },
+  {
+   "value": 3,
+   "at": "14:59:29",
+   "write": "sent",
+   "changed": null,
+   "push": {
+    "count": 0,
+    "piids": [],
+    "samples": []
+   }
+  },
+  {
+   "value": 4,
+   "at": "14:59:35",
+   "write": "sent",
+   "changed": null,
+   "push": {
+    "count": 2,
+    "piids": [
+     "2.02"
+    ],
+    "samples": [
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526795009,
+      "type": "u32",
+      "raw": "0f20060004010202000450010b015b"
+     },
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526860545,
+      "type": "u32",
+      "raw": "0f20070004010202000450010b025b"
+     }
+    ]
+   }
+  },
+  {
+   "value": 5,
+   "at": "14:59:40",
+   "write": "sent",
+   "changed": null,
+   "push": {
+    "count": 2,
+    "piids": [
+     "2.02"
+    ],
+    "samples": [
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526926081,
+      "type": "u32",
+      "raw": "0f20070004010202000450010b035b"
+     },
+     {
+      "siid": 2,
+      "piid": 2,
+      "value": 1526860545,
+      "type": "u32",
+      "raw": "0f20080004010202000450010b025b"
+     }
+    ]
+   }
+  }
+ ],
+ "pushes": 13,
+ "link": "still alive"
+}

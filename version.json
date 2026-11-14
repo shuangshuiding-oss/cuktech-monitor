@@ -1,0 +1,7 @@
+{
+  "version": "1.9.7",
+  "name": "酷态科10号Ultra",
+  "model": "AD1204U",
+  "ble_name": "njcuk.fitting.ad1204",
+  "product_id": "0x660E"
+}

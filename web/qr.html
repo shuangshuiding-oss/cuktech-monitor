@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>米家扫码登录 · 固件查询</title>
+<style>
+  html,body{margin:0;height:100%;background:#12141a;color:#e8ebf2;
+    font:14px/1.7 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif;
+    display:flex;align-items:center;justify-content:center}
+  .card{text-align:center;padding:28px 34px;border-radius:18px;background:#1b1f29;
+    box-shadow:0 12px 40px rgba(0,0,0,.45)}
+  h1{font-size:17px;margin:0 0 6px}
+  p{color:#9aa3b5;margin:6px 0 16px;font-size:13px}
+  img{width:340px;height:340px;background:#fff;border-radius:12px;padding:10px;
+    image-rendering:pixelated}
+  .meta{margin-top:14px;font-size:12px;color:#7d879b}
+  b{color:#ffb27a;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>用米家 App 扫一扫</h1>
+  <p>扫码后在手机上确认登录 · 本页每 15 秒自动换一张最新的码</p>
+  <img id="qr" src="/qr-fw.png" alt="二维码">
+  <div class="meta">当前码：<b id="t">—</b> · 刷新次数 <b id="n">0</b></div>
+</div>
+<script>
+  const img = document.getElementById('qr');
+  const t = document.getElementById('t');
+  const n = document.getElementById('n');
+  let count = 0;
+  function tick() {
+    count++;
+    img.src = '/qr-fw.png?t=' + Date.now();
+    t.textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    n.textContent = count - 1;
+  }
+  img.addEventListener('error', () => { t.textContent = '还没生成，稍等…'; });
+  tick();
+  setInterval(tick, 15000);
+</script>
+</body>
+</html>

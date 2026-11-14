@@ -1,0 +1,27 @@
+# 行尾约定：**别让 git 把 LF 改成 CRLF** —— 这不是洁癖。
+# tools/check_all.ps1 里有两条硬断言：
+#   · code LF-only   ：代码文件必须 LF（CRLF 会挂）
+#   · doc/bat CRLF-pure：文档与 .bat 必须 CRLF（混进裸 LF 会挂）
+# 不加这个文件时，Windows 上 core.autocrlf=true 的新克隆会把整棵树改成 CRLF，
+# 于是新人 clone 下来第一件事就是"自检 20 项全红"。
+* text=auto
+
+*.js    text eol=lf
+*.cjs   text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.html  text eol=lf
+*.ps1   text eol=lf
+
+*.txt   text eol=crlf
+*.bat   text eol=crlf
+
+# 二进制，别做任何转换
+*.pem   -text
+*.node  binary
+*.ico   binary
+*.png   binary
+*.exe   binary
+*.7z    binary

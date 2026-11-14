@@ -1,0 +1,810 @@
+/* 酷态科10号Ultra 界面样式 —— 从 index.html 里拆出来的。
+   仍然是普通 <link rel="stylesheet">，零依赖、无需打包。
+
+   2026-10-05 「液态玻璃」改版：
+   · 去掉所有卡片描边，改用 1px 内高光 + 多层柔影 造出玻璃厚度感；
+   · （2026-10-05）模仿玻璃的高光/亮晕/氛围光斑全部停用 —— 干净的半透明面板 + 白字；
+   · 关键文字/数字加白色 text-shadow，靠"亮晕"从背景里浮起来（比描边更像真玻璃）；
+   · 严格分层：只有卡片/端口卡/弹窗是玻璃，内部控件一律扁平半透明，
+     整页唯一的大模糊只出现在顶栏一处 —— 同屏几十块 backdrop-filter 会掉帧。 */
+
+:root{
+  /* ⚠️ --bg 只有在「浏览器里打开」时才是实心底。在 Electron 壳里 body 会拿到
+     html.shell-electron，那里把整页背景设成 transparent —— 否则窗口再透明，
+     一层不透明的 body 也会把桌面挡死（透明窗口最常见的翻车点）。 */
+  --bg:#070b14;
+  /* 玻璃板本体：比旧版略低一点的透明度，靠模糊+高光而不是靠不透明度撑起"磨砂"感。
+     shell 模式下 --panel 会被覆盖得更透（见下方 html.shell-electron 段），
+     因为那层要负责"透出窗口后面"，不像浏览器里只能靠自己画底。 */
+  --panel:rgba(20,28,48,.56); --panel2:rgba(15,22,38,.9);
+  /* 「亮面」：色相 205° 的青蓝玻璃，全站玻璃件共用 */
+  --glass-bg:linear-gradient(147deg,
+    rgba(116,168,255,.105) 0%, rgba(140,150,255,.055) 42%, rgba(255,255,255,.02) 100%);
+  /* 表面斜向高光：2026-10-05 按「去掉模仿玻璃的光晕」要求停用。
+     变量保留为 none，各处 background 引用自动失效（省得逐条删）。 */
+  --glass-sheen:none;
+  /* 边缘内高光：同样属于"画出来的玻璃感"，一并停用（全透明）。 */
+  --edge-top:rgba(255,255,255,0);
+  --edge-side:rgba(255,255,255,0);
+  /* 不可见描边（只用来给 box-shadow 定位，本身不显示） */
+  --edge:rgba(122,162,255,0);
+  /* 外投影保留（普通阴影，不是"玻璃光晕"）；里面的 inset 白线已停用 */
+  --lift-1:0 2px 6px rgba(2,5,12,.3), 0 14px 38px rgba(2,5,12,.3);
+  --lift-2:0 3px 8px rgba(2,5,12,.34), 0 20px 50px rgba(2,5,12,.36);
+  /* 文字亮晕：2026-10-05 停用（text-shadow:var(--glow) → none） */
+  --glow:none;
+  --line:rgba(122,162,255,.14); --line2:rgba(122,162,255,.28);
+  --txt:#e9eefb; --txt-2:#93a3c4; --txt-3:#5d6d90;
+  --acc:#38bdf8; --acc2:#818cf8; --acc3:#c084fc;
+  --ok:#34d399; --warn:#fbbf24; --bad:#f87171;
+  --c1:#818cf8; --c2:#c084fc; --c3:#34d399; --a:#fbbf24;
+}
+*{box-sizing:border-box}
+/* 自适应核心：根字号随窗口宽度线性变化（1100px 时约 13.4px，1920px 时约 15.8px，
+   2560px 时封顶 18px）。下面所有尺寸都用 rem，于是整块界面（字号/间距/圆角/控件）
+   会跟着窗口一起放大缩小；窄窗口另有媒体查询负责重排成单列。 */
+html{font-size:clamp(13.4px, calc(0.33vw + 9.5px), 18px)}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--txt);
+  font:1rem/1.5 "Segoe UI","Microsoft YaHei UI","PingFang SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  font-variant-numeric:tabular-nums;
+}
+
+/* 全站滚动条：默认那条浅灰方块在深色玻璃上非常扎眼 —— 它会在窗口右上角
+   画出一个**方角矩形**，正好压在大圆角上面，看起来就像"圆角外残留的白边"
+   （2026-09-23 用户截图里的白框，一部分就是它）。这里统一成细窄的半透明圆条。
+   ⚠️ 必须放在最外层（不带选择器前缀），否则只覆盖到 .log/.scroll。 */
+*::-webkit-scrollbar{width:9px;height:9px;background:transparent}
+*::-webkit-scrollbar-track{background:transparent}      /* 轨道透明：别再画方块 */
+*::-webkit-scrollbar-thumb{background:rgba(122,162,255,.22);border-radius:5px;
+  border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-thumb:hover{background:rgba(122,162,255,.38);background-clip:padding-box}
+*::-webkit-scrollbar-corner{background:transparent}     /* 横竖交叉处也别留方块 */
+html{scrollbar-width:thin;scrollbar-color:rgba(122,162,255,.22) transparent}
+/* 底图氛围光：2026-10-05 整体停用（"去掉模仿玻璃的光晕"）。
+   壳里窗外本来就是真实桌面，页面自己再画三团光斑纯属添乱；浏览器里
+   同步停掉，保持两边观感一致。 */
+body::before{display:none}
+.app{position:relative; z-index:1; max-width:min(100%,132rem); margin:0 auto;
+  padding:1.14rem 1.43rem 2.14rem}
+
+/* 壳里的顶栏模糊加强一点（窗外是活的，模糊才有意义）。
+   ⚠️ 这里**不能再写一条 `backdrop-filter` 规则** —— 模糊规则数是有硬预算的
+      （同屏几十块 backdrop-filter 会掉帧，tools/check_liquid.js 第 3 段会数）。
+      所以直接去上面 header 那条规则里把壳里的值一起写掉（用 CSS 变量），
+      不要在后面另起一条。 */
+
+/* ---------- header ---------- */
+/* 唯一一处真·背景模糊：顶栏做成贴边的玻璃条，页面从它下面滚过去时能看见模糊。
+   （卡片本身不再用 backdrop-filter —— 同屏十几块会明显掉帧。）
+   壳里把模糊调强（窗外是真实内容，糊出来才有"磨砂玻璃"的意思）——
+   用 --hdr-blur 变量，避免再写一条 backdrop-filter 规则撑大模糊预算。 */
+header{display:flex; align-items:center; gap:1.14rem; flex-wrap:wrap;
+  position:sticky; top:0; z-index:30; isolation:isolate;
+  margin:0 0 1.14rem; padding:0.79rem 0 0.86rem;
+  --hdr-blur:22px;
+  backdrop-filter:blur(var(--hdr-blur)) saturate(165%); -webkit-backdrop-filter:blur(var(--hdr-blur)) saturate(165%)}
+header::before{content:''; position:absolute; inset:0 -1.43rem; z-index:-1; pointer-events:none;
+  /* ⚠️ 2026-10-08：也改成**圆角条**（用户："这个没改成圆角的，是显示登录和蓝牙信号的那栏"）。
+     原来四角全方、左右又贴到窗口边，下沿那条直边特别显眼。
+     壳里它的上两角被 .winbar 盖住（winbar 是 fixed、更高，压在它上面），
+     所以实际看到的是**下面两个圆角** —— 和 .winbar 的下圆角（1.1rem）正好呼应。
+     浏览器模式下没有 winbar，四个角都露出来也是一条圆润的玻璃条。 */
+  border-radius:1.1rem;
+  background:linear-gradient(180deg,rgba(20,29,50,.8),rgba(13,19,34,.58));
+  border-bottom:1px solid rgba(255,255,255,.06);
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 14px 40px rgba(2,5,12,.4)}
+.brand{display:flex; align-items:center; gap:0.79rem}
+/* 玻璃图标底：不加描边，靠内高光 + 下方投影立住 */
+.brand .mark{width:2.71rem;height:2.71rem;flex:0 0 2.71rem;border-radius:0.86rem;
+  background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.02) 40%,rgba(13,21,38,.34)),
+    linear-gradient(145deg,#16223a,#0e1729);
+  display:grid;place-items:center;
+  box-shadow:0 0.8px 0 rgba(255,255,255,.4) inset, 0 -0.6px 0 rgba(255,255,255,.07) inset,
+    0 8px 22px rgba(2,5,12,.45)}
+.brand .mark svg{width:1.71rem;height:1.71rem}
+.brand h1{font-size:1.21rem;margin:0;font-weight:650;letter-spacing:.2px;text-shadow:var(--glow)}
+.brand .sub{font-size:0.86rem;color:var(--txt-3);margin-top:1px}
+.spacer{flex:1}
+/* 动作按钮组：窄窗口换行时整组一起掉到下一行，不会把按钮拆散 */
+.hgroup{display:flex;align-items:center;gap:0.57rem;flex-wrap:wrap}
+/* 药丸：同样去描边，用小高光 + 内阴影做出"玻璃胶囊" */
+.pill{display:inline-flex;align-items:center;gap:0.5rem;padding:0.43rem 0.86rem;border-radius:999px;
+  background:var(--glass-bg), rgba(255,255,255,.035);
+  box-shadow:0 0.6px 0 rgba(255,255,255,.22) inset, 0 -1px 4px rgba(2,5,12,.22) inset,
+    0 4px 14px rgba(2,5,12,.26);
+  font-size:0.89rem;color:var(--txt-2);white-space:nowrap}
+.pill b{color:var(--txt);font-weight:600}
+.dot{width:0.57rem;height:0.57rem;border-radius:50%;background:var(--txt-3);flex:0 0 0.57rem}
+.dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(52,211,153,.16), 0 0 10px rgba(52,211,153,.6);animation:pulse 2.4s infinite}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 4px rgba(251,191,36,.16), 0 0 10px rgba(251,191,36,.5)}
+.dot.err{background:var(--bad);box-shadow:0 0 0 4px rgba(248,113,113,.16), 0 0 10px rgba(248,113,113,.5)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+/* 按钮：玻璃片。默认无描边，靠顶部 1px 高光切出边缘；hover/选中时才叠一层彩色玻璃。
+   样式同时套在 button 和 .switch/.seg 这类看起来像控件的元素上（见下方各自规则）。 */
+button{font:inherit;cursor:pointer;border-radius:0.79rem;padding:0.57rem 1.07rem;transition:.16s;
+  background:var(--glass-bg), rgba(255,255,255,.045);border:0;color:var(--txt);
+  box-shadow:0 0.8px 0 rgba(255,255,255,.26) inset, 0 -1px 5px rgba(2,5,12,.24) inset,
+    0 3px 12px rgba(2,5,12,.28)}
+button:hover{background:linear-gradient(147deg,rgba(173,216,255,.2),rgba(150,160,255,.11)),
+  rgba(56,189,248,.08);color:#f2f8ff;
+  box-shadow:0 0.8px 0 rgba(255,255,255,.42) inset, 0 -1px 5px rgba(2,5,12,.2) inset,
+    0 4px 16px rgba(56,189,248,.24)}
+button:active{transform:translateY(1px)}
+button.primary{background:linear-gradient(147deg,rgba(150,220,255,.3),rgba(150,160,255,.2)),
+  rgba(56,189,248,.14);
+  box-shadow:0 0.8px 0 rgba(255,255,255,.45) inset, 0 -1px 6px rgba(2,5,12,.22) inset,
+    0 6px 20px rgba(56,189,248,.3)}
+button.ghost{background:transparent;box-shadow:0 0.6px 0 rgba(255,255,255,.16) inset}
+button.ghost:hover{background:rgba(56,189,248,.09);
+  box-shadow:0 0.6px 0 rgba(255,255,255,.32) inset, 0 4px 14px rgba(56,189,248,.18)}
+button:disabled{opacity:.45;cursor:not-allowed}
+/* 危险操作（恢复出厂设置）：不画红边框，靠一块染红的玻璃 + 红色辉光表示 */
+button.danger{background:rgba(248,113,113,.14);color:#ffd9d9;
+  box-shadow:0 0.7px 0 rgba(255,190,190,.32) inset, 0 2px 10px rgba(248,113,113,.18)}
+button.danger:hover{background:rgba(248,113,113,.24);color:#fff;
+  box-shadow:0 0.7px 0 rgba(255,200,200,.45) inset, 0 4px 18px rgba(248,113,113,.34)}
+button.icon-btn{padding:0.57rem 0.86rem}
+
+/* ---------- 背景光斑 ----------
+   三团缓慢飘动的色斑，固定在最底层。玻璃的"透"要有东西可透 —— 底图太安静的话，
+   面板看上去就只是半透明色块。动画周期 26~40s，几乎察觉不到在动，但一眼能看出是活的。 */
+/* 背景色斑：2026-10-05 整体停用（模仿玻璃的光晕） */
+.bg-orbs{display:none}
+.bg-orbs i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;display:block}
+.bg-orbs i:nth-child(1){width:46vw;height:46vw;left:-8vw;top:-12vw;
+  background:radial-gradient(circle,rgba(56,189,248,.5),transparent 70%);animation:drift1 34s ease-in-out infinite}
+.bg-orbs i:nth-child(2){width:38vw;height:38vw;right:-6vw;top:6vh;
+  background:radial-gradient(circle,rgba(192,132,252,.42),transparent 70%);animation:drift2 40s ease-in-out infinite}
+.bg-orbs i:nth-child(3){width:42vw;height:42vw;left:28vw;bottom:-18vw;
+  background:radial-gradient(circle,rgba(52,211,153,.24),transparent 70%);animation:drift3 29s ease-in-out infinite}
+@keyframes drift1{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(6vw,4vh,0) scale(1.12)}}
+@keyframes drift2{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-5vw,6vh,0) scale(1.08)}}
+@keyframes drift3{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-4vw,-5vh,0) scale(1.15)}}
+@media(prefers-reduced-motion:reduce){.bg-orbs i{animation:none}}
+/* 注意：.app 的一条完整规则在文件上方（max-width / margin / padding），
+   壳里的补充规则在下面 shell-electron 段。这里不要再写一条同名规则，
+   否则会按源码顺序把上面的 padding 覆盖掉（踩过）。 */
+
+/* ---------- 玻璃基类 ----------
+   卡片 / 端口卡 / 弹窗 / 面板 / 统计格共用同一套"无边框玻璃"配方：
+   低透明度本体 + 斜向高光 + 内高光 + 分层投影。默认没有 border，
+   用 box-shadow 的 inset 亮线来切边缘 —— 这正是去掉边框后仍然"有形"的关键。 */
+.card,.port,.modal,.panel-soft,.stat{
+  background:var(--panel);
+  border:1px solid var(--edge);
+  box-shadow:var(--lift-1), inset -0.7px 0 0 var(--edge-side), inset 0.7px 0 0 var(--edge-side);
+  box-shadow:var(--lift-1), inset 0 1px 0 var(--edge-top),
+    inset -0.7px 0 0 var(--edge-side), inset 0.7px 0 0 var(--edge-side);
+}
+
+/* ---------- cards ---------- */
+.card{border-radius:1.35rem;padding:1.07rem 1.21rem}
+.card h2{margin:0 0 0.79rem;font-size:0.93rem;font-weight:600;color:var(--txt-2);letter-spacing:.5px;
+  display:flex;align-items:center;justify-content:space-between;gap:0.71rem;
+  text-shadow:0 1px 6px rgba(255,255,255,.07)}
+.card h2 .tag{font-size:0.79rem;color:var(--txt-3);font-weight:400;text-shadow:none}
+/* 温度计卡片可折叠（2026-10-08 用户要求：「温度计板块加个折叠开关，有的人用不上」）。
+   收起只把内容藏起来（曲线、设置都还在），标题行留一个读数摘要，数字仍看得见。 */
+.env-fold{margin-left:auto;flex:0 0 auto;font-size:0.79rem;padding:0.21rem 0.71rem}
+#env-card.folded > #env-fold-body{display:none}
+#env-card.folded > h2{margin-bottom:0}
+.grid{display:grid;gap:1rem}
+.row1{grid-template-columns:24rem minmax(0,1fr)}
+.row3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.row2{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+@media(max-width:1180px){.row1{grid-template-columns:1fr}.row3{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+/* 中等窗口：三列压成两列，别直接掉到单列 */
+@media(min-width:821px) and (max-width:1180px){.row3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ports{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;margin:1rem 0}
+@media(max-width:1080px){.ports{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.ports{grid-template-columns:1fr}}
+
+/* ---------- 卡内分组 ----------
+   以前每段之间是靠 1px 实线分隔（border-top），和"去边框"冲突。
+   改用一条渐隐的玻璃高光线：中间亮、两头化开，看起来像玻璃的接缝/反光，而不是表格线。 */
+.sec{border-top:0;margin-top:1.1rem;padding-top:0.95rem;margin-top:1.2rem;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.16) 18%,rgba(255,255,255,.2) 50%,
+    rgba(255,255,255,.16) 82%,transparent) top left/100% 1px no-repeat;
+  background-clip:padding-box}
+.sec-h{font-size:0.82rem;color:var(--txt-3);margin-bottom:0.57rem;
+  display:flex;align-items:baseline;gap:0.4rem;flex-wrap:wrap}
+
+/* ---------- gauge ---------- */
+.gauge-wrap{position:relative;display:grid;place-items:center}
+.gauge-wrap svg{width:100%;max-width:20.71rem;height:auto;display:block;
+  filter:drop-shadow(0 10px 22px rgba(56,189,248,.18))}
+.gauge-center{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+.gauge-val{font-size:3.29rem;font-weight:700;line-height:1;letter-spacing:-1.5px;
+  background:linear-gradient(135deg,#9fe0ff,#e0c4ff);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 14px rgba(160,200,255,.42))}
+.gauge-unit{font-size:1.07rem;color:var(--txt-2);margin-left:3px;font-weight:500}
+.gauge-cap{font-size:0.82rem;color:var(--txt-3);margin-top:5px;letter-spacing:.6px}
+.gauge-foot{display:flex;justify-content:space-between;gap:0.57rem;margin-top:0.86rem;font-size:0.86rem;color:var(--txt-3)}
+.gauge-foot b{color:var(--txt);font-weight:600;text-shadow:var(--glow)}
+
+/* ---------- chart ---------- */
+.chart-box{position:relative;height:17.86rem}
+#chart{width:100%;height:100%;display:block}
+.legend{display:flex;gap:1rem;flex-wrap:wrap;font-size:0.86rem;color:var(--txt-2);margin-bottom:0.57rem}
+.legend span{display:inline-flex;align-items:center;gap:0.43rem;cursor:pointer;user-select:none;transition:.15s}
+.legend i{width:1rem;height:3px;border-radius:2px;display:inline-block}
+.legend span.off{opacity:.35}
+/* 提示气泡也是玻璃（这里必须真模糊：它浮在曲线上，不模糊就糊住线看不清） */
+.tip{position:absolute;pointer-events:none;background:rgba(10,16,30,.82);
+  backdrop-filter:blur(14px) saturate(150%); -webkit-backdrop-filter:blur(14px) saturate(150%);
+  border:1px solid var(--edge);border-radius:0.79rem;padding:0.57rem 0.79rem;font-size:0.86rem;line-height:1.65;
+  white-space:nowrap;opacity:0;transition:opacity .12s;z-index:5;
+  box-shadow:0 0.8px 0 rgba(255,255,255,.2) inset, 0 12px 30px rgba(2,5,12,.55)}
+.tip b{font-weight:600}
+/* 图表/表格下方的小字注释：与主体拉开一档 */
+.chart-foot,.table-foot{margin-top:0.57rem;font-size:0.75rem;color:var(--txt-3);letter-spacing:.2px}
+.chart-foot{display:flex;justify-content:space-between;gap:0.71rem}
+.table-foot b{color:var(--txt-2);font-weight:600}
+
+/* ---------- port cards ---------- */
+.port{border-radius:1.35rem;padding:1rem 1.07rem;position:relative;overflow:hidden;transition:.22s}
+.port.active{box-shadow:var(--lift-2), inset 0 1px 0 rgba(255,255,255,.4),
+  inset -0.7px 0 0 var(--edge-side), inset 0.7px 0 0 var(--edge-side)}
+/* 左侧那道口色条：原来是硬边色块，现在做成一根发光玻璃棱（上方亮、下方化开），
+   去掉描边之后整张卡就靠它认口。 */
+.port::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3.5px;background:var(--pc,#334155);
+  opacity:.9;border-radius:0 3px 3px 0;
+  box-shadow:0 0 12px -1px var(--pc,#334155), 0 0 0 0.5px rgba(255,255,255,.22) inset}
+/* 顶部那圈与口色同源的光晕：让活着的端口"亮起来" */
+.port.active::before{content:'';position:absolute;inset:-40% -20% auto -20%;height:70%;pointer-events:none;
+  background:radial-gradient(60% 70% at 50% 0%, var(--pc), transparent 70%);
+  opacity:.14;filter:blur(2px)}
+.port .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.64rem}
+.port .name{font-size:1.07rem;font-weight:650;letter-spacing:.4px;text-shadow:var(--glow)}
+.port .st{font-size:0.79rem;padding:0.21rem 0.64rem;border-radius:999px;border:1px solid var(--edge);
+  background:var(--glass-bg), rgba(255,255,255,.05);color:var(--txt-3);
+  box-shadow:0 0.6px 0 rgba(255,255,255,.2) inset}
+.port .st.on{color:#08131f;background:var(--ok);border-color:transparent;font-weight:600;
+  box-shadow:0 0.6px 0 rgba(255,255,255,.5) inset, 0 0 16px rgba(52,211,153,.4)}
+.port .big{font-size:2.14rem;font-weight:700;line-height:1;letter-spacing:-1px;color:var(--pc,#e9eefb);
+  text-shadow:0 2px 16px color-mix(in srgb, var(--pc,#8ab4ff) 42%, transparent)}
+.port .big small{font-size:0.93rem;color:var(--txt-2);font-weight:500;margin-left:2px;text-shadow:none}
+.port .sub{font-size:0.86rem;color:var(--txt-2);margin-top:0.5rem;display:flex;justify-content:space-between}
+.port .sub span{color:var(--txt-3)}
+.bar{height:0.29rem;border-radius:3px;background:rgba(255,255,255,.07);margin-top:0.79rem;overflow:hidden;
+  box-shadow:0 1px 2px rgba(2,5,12,.4) inset}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--pc);
+  box-shadow:0 0 10px var(--pc);transition:width .4s}
+.port .cap{margin-top:0.71rem;font-size:0.82rem;color:var(--txt-3);padding-top:0.64rem;
+  display:flex;justify-content:space-between;gap:0.43rem;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.13) 15%,rgba(255,255,255,.16) 50%,
+    rgba(255,255,255,.13) 85%,transparent) top left/100% 1px no-repeat}
+.port .cap:first-of-type{margin-top:0.85rem}
+.port .cap b{color:var(--txt-2);font-weight:600}
+
+/* ---------- kv lists ---------- */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:0.43rem 1rem;font-size:0.89rem}
+.kv dt{color:var(--txt-3);white-space:nowrap}
+.kv dd{margin:0;color:var(--txt);text-align:right;overflow:hidden;text-overflow:ellipsis}
+.kv dd.mute{color:var(--txt-3)}
+.chips{display:flex;gap:0.43rem;flex-wrap:wrap}
+.chip{font-size:0.79rem;padding:0.21rem 0.64rem;border-radius:0.5rem;border:1px solid var(--edge);color:var(--txt-3);
+  background:var(--glass-bg), rgba(255,255,255,.04);box-shadow:0 0.6px 0 rgba(255,255,255,.16) inset}
+.chip.on{color:#061e15;background:var(--ok);border-color:transparent;
+  box-shadow:0 0.6px 0 rgba(255,255,255,.45) inset, 0 0 14px rgba(52,211,153,.35)}
+.chip.off{opacity:.5}
+
+/* ---------- table / log ---------- */
+table{width:100%;border-collapse:collapse;font-size:0.86rem}
+th,td{text-align:left;padding:0.43rem 0.64rem;
+  border-bottom:1px solid rgba(255,255,255,.045)}
+th{color:var(--txt-3);font-weight:500;font-size:0.79rem;letter-spacing:.4px;
+  border-bottom-color:rgba(255,255,255,.1)}
+td.mono{font-family:"Cascadia Mono",Consolas,"Courier New",monospace;color:var(--txt-2)}
+.log{height:12.29rem;overflow:auto;font:0.82rem/1.7 "Cascadia Mono",Consolas,monospace;color:var(--txt-2);
+  background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.015) 45%,transparent),
+    rgba(4,8,16,.42);
+  border:1px solid var(--edge);border-radius:0.86rem;padding:0.64rem 0.79rem;white-space:pre-wrap;word-break:break-all;
+  box-shadow:0 0.8px 0 rgba(255,255,255,.14) inset, 0 2px 10px rgba(2,5,12,.4) inset}
+.log::-webkit-scrollbar,.scroll::-webkit-scrollbar{width:9px;height:9px}
+.log::-webkit-scrollbar-thumb,.scroll::-webkit-scrollbar-thumb{background:rgba(122,162,255,.22);border-radius:5px}
+.log::-webkit-scrollbar-track,.scroll::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- notice / layer ---------- */
+.notice{display:flex;gap:0.79rem;align-items:flex-start;padding:0.86rem 1rem;border-radius:0.95rem;font-size:0.93rem;
+  border:1px solid var(--edge);background:rgba(255,255,255,.035);margin-bottom:1rem;
+  box-shadow:var(--lift-1), inset 0 1px 0 rgba(255,255,255,.2)}
+.notice.warn{background:rgba(251,191,36,.09);
+  box-shadow:var(--lift-1), inset 0 1px 0 rgba(251,191,36,.42)}
+.notice.bad{background:rgba(248,113,113,.09);
+  box-shadow:var(--lift-1), inset 0 1px 0 rgba(248,113,113,.42)}
+.notice .ico{font-size:1.14rem;line-height:1.2}
+.notice .t{font-weight:600;margin-bottom:3px}
+.notice .d{color:var(--txt-2);font-size:0.89rem}
+.notice code{background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;font-size:0.86rem}
+.layer{position:fixed;inset:0;z-index:40;display:grid;place-items:center;background:rgba(4,7,14,.62);
+  backdrop-filter:blur(16px) saturate(130%); -webkit-backdrop-filter:blur(16px) saturate(130%)}
+.layer.hidden{display:none}
+.modal{width:min(40rem,92vw);border-radius:1.5rem;padding:1.57rem;
+  background:var(--panel2);
+  box-shadow:var(--lift-2), inset 0 1px 0 rgba(255,255,255,.4),
+    inset -1px 0 0 var(--edge-side), inset 1px 0 0 var(--edge-side)}
+.modal h3{margin:0 0 0.57rem;font-size:1.14rem;text-shadow:var(--glow)}
+.modal p{margin:0 0 1rem;color:var(--txt-2);font-size:0.93rem}
+/* 登录弹层里的「网络自检」结果面板：结论一句话，细节逐行列出（可滚动） */
+.login-diag{margin:0 0 1rem;padding:0.64rem 0.79rem;border-radius:0.86rem;font-size:0.82rem;line-height:1.65;
+  white-space:pre-wrap;word-break:break-word;max-height:12rem;overflow:auto;color:var(--txt-2);
+  background:rgba(4,8,16,.32);border:1px solid var(--edge)}
+.login-diag b{color:var(--txt)}
+.login-diag b.ok{color:var(--ok)}
+.login-diag b.warn{color:var(--warn)}
+.login-diag b.bad{color:var(--bad)}
+.qrbox{display:grid;place-items:center;background:#fff;border-radius:1.14rem;padding:0.86rem;margin:0 auto 1rem;width:16.86rem;height:16.86rem;
+  box-shadow:0 0 0 1px rgba(255,255,255,.5), 0 18px 44px rgba(2,5,12,.5)}
+.qrbox img{width:15.14rem;height:15.14rem;display:block;image-rendering:pixelated}
+.qrbox .ph{color:#64748b;font-size:0.89rem;text-align:center;padding:1.43rem}
+.hidden{display:none!important}
+.muted{color:var(--txt-3)}
+.flexrow{display:flex;gap:0.71rem;flex-wrap:wrap;align-items:center}
+/* 输入框/下拉也是玻璃片，和按钮同一语言；聚焦时给一圈青色光晕代替描边 */
+input[type=number],input[type=text]{font:inherit;background:var(--glass-bg), rgba(255,255,255,.045);
+  border:1px solid var(--edge);border-radius:0.71rem;color:var(--txt);padding:0.43rem 0.71rem;width:7.86rem;
+  box-shadow:0 0.7px 0 rgba(255,255,255,.2) inset, 0 2px 8px rgba(2,5,12,.3) inset;
+  transition:.16s}
+input[type=number]:focus,input[type=text]:focus,select:focus{outline:none;
+  background:linear-gradient(147deg,rgba(173,216,255,.16),rgba(150,160,255,.08)), rgba(56,189,248,.06);
+  box-shadow:0 0.7px 0 rgba(255,255,255,.34) inset, 0 0 0 3px rgba(56,189,248,.2)}
+select{font:inherit;background:var(--glass-bg), rgba(255,255,255,.045);border:1px solid var(--edge);
+  border-radius:0.71rem;color:var(--txt);padding:0.36rem 0.57rem;max-width:10.71rem;
+  box-shadow:0 0.7px 0 rgba(255,255,255,.2) inset, 0 2px 8px rgba(2,5,12,.3) inset;transition:.16s}
+select option{background:#131b2e;color:#e9eefb}
+
+/* ---------- 控制面板 ---------- */
+.ctl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.71rem 1.14rem}
+@media(max-width:700px){.ctl-grid{grid-template-columns:1fr}}
+.sw-row{display:flex;align-items:center;justify-content:space-between;gap:0.71rem;font-size:0.93rem;color:var(--txt-2)}
+.sw-row b{color:var(--txt);font-weight:600;text-shadow:var(--glow)}
+/* 开关：玻璃槽 + 玻璃珠。关态几乎透明，开态整块染成绿色并带辉光。 */
+.switch{position:relative;width:2.86rem;height:1.57rem;flex:0 0 2.86rem;border-radius:999px;cursor:pointer;
+  background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02)), rgba(255,255,255,.05);
+  border:1px solid var(--edge);transition:.18s;
+  box-shadow:0 0.8px 0 rgba(255,255,255,.22) inset, 0 2px 8px rgba(2,5,12,.34) inset}
+.switch::after{content:'';position:absolute;top:0.14rem;left:0.14rem;width:1.14rem;height:1.14rem;border-radius:50%;
+  background:linear-gradient(160deg,#f4f8ff,#a9b8d4);transition:.18s;
+  box-shadow:0 1px 4px rgba(2,5,12,.5), 0 0.5px 0 rgba(255,255,255,.7) inset}
+.switch.on{background:linear-gradient(180deg,rgba(52,211,153,.42),rgba(52,211,153,.2));
+  box-shadow:0 0.8px 0 rgba(255,255,255,.3) inset, 0 0 16px rgba(52,211,153,.4)}
+.switch.on::after{left:calc(100% - 1.14rem - 0.14rem);
+  background:linear-gradient(160deg,#eafff6,#5ff0bb);
+  box-shadow:0 1px 4px rgba(2,5,12,.4), 0 0 12px rgba(52,211,153,.72)}
+.switch.busy{opacity:.5;pointer-events:none}
+/* 分段控件：整块玻璃胶囊，选中段是一小片被点亮的玻璃 */
+.seg{display:inline-flex;border:1px solid var(--edge);border-radius:0.79rem;overflow:hidden;
+  background:rgba(255,255,255,.035);
+  box-shadow:0 0.7px 0 rgba(255,255,255,.18) inset, 0 2px 8px rgba(2,5,12,.3) inset}
+.seg button{border:0;border-radius:0;padding:0.36rem 0.79rem;font-size:0.86rem;background:transparent;
+  box-shadow:none;border-right:1px solid rgba(255,255,255,.06)}
+.seg button:last-child{border-right:0}
+.seg button:hover{background:rgba(56,189,248,.1);box-shadow:none}
+.seg button.on{background:linear-gradient(180deg,rgba(190,228,255,.26),rgba(56,189,248,.14));color:#eaf7ff;
+  box-shadow:0 0.7px 0 rgba(255,255,255,.4) inset, 0 0 14px rgba(56,189,248,.22)}
+details{border-radius:0}
+summary{list-style:none;user-select:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'▸ ';color:var(--txt-3)}
+details[open] summary::before{content:'▾ '}
+.pcard .top{display:flex;align-items:center;justify-content:space-between}
+
+/* 卡内分隔（点线取代实线，见 .sec 说明） */
+hr{height:1px;border:0;margin:1.14rem 0 0.93rem;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15) 18%,rgba(255,255,255,.19) 50%,
+    rgba(255,255,255,.15) 82%,transparent)}
+
+/* ---------- 用电量 ---------- */
+.stat-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.79rem;margin-bottom:1.07rem}
+@media(max-width:760px){.stat-row{grid-template-columns:1fr}}
+.stat{border-radius:1rem;padding:0.79rem 0.93rem}
+.stat .k{font-size:0.82rem;color:var(--txt-3);margin-bottom:0.36rem}
+.stat .v{font-size:1.57rem;font-weight:700;letter-spacing:-.5px;line-height:1.15;text-shadow:var(--glow)}
+.stat .v small{font-size:0.86rem;color:var(--txt-2);font-weight:500;margin-left:2px;text-shadow:none}
+/* 「度」= kWh 副行：等宽数字，和上面的 Wh 对得齐 */
+.stat .sub{font-size:0.82rem;color:var(--txt-3);margin-top:0.21rem;
+  font-variant-numeric:tabular-nums;letter-spacing:.2px}
+/* 「充电中」小标签：每个口插着设备、这次还没结算时挂在端口名后面 */
+.kv b.live{font-size:0.72rem;font-weight:600;color:#5ff0bb;margin-left:0.29rem;
+  border-radius:999px;padding:0.07rem 0.43rem;vertical-align:middle;white-space:nowrap;
+  background:rgba(34,197,94,.18);box-shadow:0 0.6px 0 rgba(120,255,200,.3) inset, 0 0 12px rgba(34,197,94,.25)}
+/* 端口卡「本次充电」那行的实时标记（正在充时才有） */
+.port .cap i.live-dot{font-style:normal;font-size:0.72rem;font-weight:600;
+  color:#5ff0bb;margin-left:0.29rem;white-space:nowrap}
+.stat.hi .sub{color:var(--txt-2)}
+.stat.hi{background:rgba(255,255,255,.04)}
+.stat.hi .v{background:linear-gradient(135deg,#9fe0ff,#e0c4ff);-webkit-background-clip:text;
+  background-clip:text;color:transparent;filter:drop-shadow(0 2px 12px rgba(160,200,255,.4))}
+.ebars{display:flex;gap:0.57rem;align-items:flex-end;height:9rem;padding-top:4px}
+.ebars .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;
+  gap:0.43rem;height:100%}
+.ebars .barwrap{width:100%;flex:1;display:flex;align-items:flex-end;justify-content:center}
+.ebars .b{width:64%;min-height:2px;border-radius:6px 6px 3px 3px;
+  background:linear-gradient(180deg,#7dd3fc,#4f46e5);transition:height .45s;
+  box-shadow:0 0 14px rgba(56,189,248,.4), 0 0.6px 0 rgba(255,255,255,.5) inset}
+.ebars .col.today .b{background:linear-gradient(180deg,#d3a6ff,#6366f1);
+  box-shadow:0 0 16px rgba(192,132,252,.5), 0 0.6px 0 rgba(255,255,255,.5) inset}
+.ebars .col.zero .b{background:rgba(255,255,255,.09);box-shadow:none}
+.ebars .lbl{font-size:0.75rem;color:var(--txt-3);white-space:nowrap}
+.ebars .val{font-size:0.75rem;color:var(--txt-2)}
+
+/* ---------- 降级：不支持 backdrop-filter / color-mix 的浏览器 ---------- */
+/* Edge/Chrome 现代版本都支持；这里只保证老引擎上不会糊成一片看不见字。 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  header::before{background:rgba(12,18,32,.96)}
+  .card,.port,.modal,.stat{background:rgba(19,27,46,.94)}
+  .tip{background:rgba(9,14,26,.98)}
+}
+@supports not (color:color-mix(in srgb, red 50%, blue)){
+  .port .big{text-shadow:0 2px 16px rgba(140,180,255,.35)}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+
+/* ==================================================================
+   Electron 透明窗口外壳（html.shell-electron）
+   ==================================================================
+   这一整段只在 Electron 壳里生效。浏览器里打开（没有这个 class）时，
+   页面行为与观感跟以前完全一致 —— 这套自绘窗口控件不会露出来。
+
+   三件事必须同时成立，窗口才能"看见后面"：
+     1. html/body 背景全透明 —— 否则不透明的 body 会把桌面挡死；
+     2. 一块 .win-glass 玻璃板负责"糊"，它盖住整窗；
+     3. 页面内容（.app）浮在玻璃板之上。
+
+   ⚠️ backdrop-filter 在这里的作用和老问题相反：它**摸不到窗口外面的像素**
+      （Chromium 的 backdrop 只取窗口内的合成结果）。所以真正的"透"来自
+      Electron 的原生 backgroundMaterial；CSS 这层只负责给玻璃上色+高光。
+      这也是为什么 material 档位切换要看 IPC 返回，而不是纯 CSS 能做到的。 */
+
+html.shell-electron{background:transparent!important}
+html.shell-electron body{
+  background:transparent!important;
+  /* 大圆角 + 裁掉圆角外的内容：整块界面像一块圆角玻璃浮在桌面上。
+     ⚠️ overflow:hidden 单独写在 body 上在透明窗口里**不一定真的裁** ——
+        body 的裁剪框按文档算，滚动容器一变就失效（四角于是漏出方角）。
+        这里显式把 html 也套一层圆角 + 裁剪，等于"双重保险"：
+        html 裁一层、body 裁一层，哪一层生效都拦得住。 */
+  border-radius:var(--win-r);
+  overflow:hidden;                 /* 圆角外的内容必须裁掉，否则四角会漏出方角 */
+}
+html.shell-electron{
+  border-radius:var(--win-r);
+  overflow:hidden;                 /* 与 body 同款：整页作为一个圆角裁切框 */
+  /* 透明窗口没有系统边框，用一圈极淡的内缘亮线代替 —— 边界清楚但不显"框" */
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+/* 壳里的氛围光压段已整体停用：body::before 与 .bg-orbs 都 display:none（见上）。
+   染色档位（2026-10-05）：DWM 材质已弃用（材质按窗口矩形合成、无视 setShape
+   圆角裁切，是"圆角外方形残留"的元凶）。三档全部是纯 CSS 半透明染色：
+     deep  —— 默认。窗外可辨、白字可读
+     light —— 更透，适合深色壁纸
+     solid —— 完全不透明，远程桌面/省 GPU
+   浏览器里（无壳）不透 —— --bg 实心底，这些类只影响 --panel 深浅。 */
+html.glass-deep{ --glass-tint:rgba(9,14,26,.56); --panel:rgba(14,20,36,.56); --panel2:rgba(10,16,29,.8); }
+html.glass-light{--glass-tint:rgba(10,16,28,.16); --panel:rgba(15,22,38,.32); --panel2:rgba(11,17,30,.6); }
+html.glass-solid{--glass-tint:rgba(9,14,25,1);    --panel:rgba(15,22,38,.96); --panel2:rgba(11,17,30,1); }
+
+/* ============================================================
+   浅色主题（2026-10-05，用户要"浅色切换"）
+   ============================================================
+   做法：html.light 覆盖整套颜色变量（文字/面板/投影/分隔线）。整窗染色
+   --glass-tint 与 --panel 的透明度仍由顶栏滑块实时驱动（见 shell.js applyOpa，
+   浅色下用浅色基色、深色下用深色基色），这里只负责把"色相"从深蓝换成浅白。 */
+html.light{
+  --bg:#e9edf5;                        /* 浏览器里打开时的实心底 */
+  --glass-bg:linear-gradient(147deg,
+    rgba(255,255,255,.9) 0%, rgba(240,246,255,.78) 42%, rgba(255,255,255,.62) 100%);
+  --lift-1:0 2px 6px rgba(40,55,80,.12), 0 14px 38px rgba(40,55,80,.16);
+  --lift-2:0 3px 8px rgba(40,55,80,.15), 0 20px 50px rgba(40,55,80,.18);
+  --line:rgba(60,80,120,.16); --line2:rgba(60,80,120,.3);
+  --txt:#1c2436; --txt-2:#4a5a78; --txt-3:#7a8aa5;
+  --acc:#0ea5e9; --acc2:#6366f1; --acc3:#a855f7;
+  --ok:#10b981; --warn:#d97706; --bad:#ef4444;
+  --c1:#6366f1; --c2:#a855f7; --c3:#10b981; --a:#d97706;
+}
+/* 浅色下，那些"深色玻璃片"（半透明白底）改成半透明深色玻璃片 —— 否则按钮
+   在浅底上几乎看不见。只覆盖最影响观感的控件底色，不动布局。 */
+html.light .wbtn,
+html.light .wslider,
+html.light button,
+html.light .wseg{ background:rgba(28,38,60,.07); }
+html.light .wbtn,
+html.light .wslider,
+html.light button{ box-shadow:0 0.6px 0 rgba(28,38,60,.12) inset; }
+html.light .wslider input[type=range]{ background:rgba(28,38,60,.22); }
+html.light .wslider input[type=range]::-webkit-slider-thumb{ background:#3b4a6b; }
+html.light .wslider input[type=range]::-moz-range-thumb{ background:#3b4a6b; }
+/* 顶栏底衬换成浅色玻璃 */
+html.light header::before{
+  background:linear-gradient(180deg,rgba(255,255,255,.82),rgba(246,249,255,.6));
+  border-bottom:1px solid rgba(60,80,120,.08);
+}
+/* 壳里的顶栏底衬也随浅色 */
+html.light.shell-electron header::before{
+  background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(246,249,255,.52));
+}
+/* 大数字的浅蓝紫渐变是为深底调的，浅底上几乎看不见 —— 换成深色渐变 */
+html.light .gauge-val{
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 3px 10px rgba(80,100,160,.28));
+}
+html.light .gauge-wrap svg{filter:drop-shadow(0 10px 22px rgba(80,120,200,.2))}
+/* 提示气泡保持深底白字（浅色 UI 里深色 tooltip 是惯例，反差更清楚） */
+
+/* ★ 实时透明的最后一道坎：几处"底衬"用了很高的不透明度，浏览器里没问题
+   （它底下就是自己画的深色底），但在壳里它们会把真实桌面挡回去：
+     · header::before  rgba(20,29,50,.8)  → 顶栏区域几乎是实心的
+     · .log 里那层 rgba(4,8,16,.42)       → 日志框
+   壳里统一压薄，并把 header 的原生模糊调强 —— 窗外的东西经过它变成"磨砂"，
+   这样"背后有东西在动"才真的看得见。 */
+html.shell-electron header::before{
+  background:linear-gradient(180deg,rgba(14,21,38,.56),rgba(10,16,28,.38));
+  border-bottom:1px solid rgba(255,255,255,.05);
+}
+/* 壳里顶栏糊得更重一点：只改变量，不新增规则（模糊预算是硬的） */
+html.shell-electron header{--hdr-blur:26px}
+
+/* 壳里滚动的其实是 body（html,body 都 height:100%）。给 body 加圆角只是画出来，
+   内容照样会在四角溢出 —— 所以壳里干脆让**内容自己滚**、外层不滚：
+   .app 撑满并自滚，body 永远不产生滚动条。这样四角除了 .app 的圆角裁切之外
+   不会再有第二个方角来源（滚动条轨道曾经就是那个"白框"）。 */
+html.shell-electron{overflow:hidden!important}
+html.shell-electron body{overflow:hidden!important}
+
+:root{
+  /* ★ 2026-10-05 定案：小圆角 8px，与**系统圆角**同值（roundedCorners:true）。
+     磨砂材质跟随系统圆角裁切，CSS 必须同值，否则双圆角错位露出材质月牙。 */
+  --win-r:8px;
+  --win-pad:0.62rem;               /* 玻璃板内缩，留一圈能看见"外面"的边 */
+  /* 玻璃染色。
+     ★ 2026-09-23：「透明要实时的」——
+     原来是 rgba(14,21,38,.52)：52% 不透明的深蓝，等于把窗外盖掉一半，
+     桌面/别的窗口只剩个朦胧影子，看着像一张静态壁纸而不是"活的窗外"。
+     现在降到 .28：只留够撑对比的染色（白字在浅色壁纸上也读得清），
+     窗外保持肉眼可辨。真正让画面"变糊/有质感"的是 Electron 的原生材质
+     （acrylic/mica），不是这层颜色 —— 别再用不透明度去假装玻璃。 */
+  --glass-tint:rgba(11,17,30,.28);
+}
+
+/* 玻璃板：整窗一层，圆角与窗口一致。
+   ⚠️ 它必须**几乎全透**——这一层的唯一职责是给窗户加一点冷色染色和上缘高光，
+   不是"替代窗外"。真正的模糊来自 Electron 原生材质。染色一重，实时透明就没了。 */
+.win-glass{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  border-radius:var(--win-r);
+  /* 整窗染色：只有一层半透明深色（档位见 html.glass-* 类）。
+     2026-10-05：边缘那一圈 inset 白线（模仿玻璃反光）已按要求去掉。 */
+  background:var(--glass-tint);
+}
+/* 玻璃"高光扫过"：一块从右上往左下淡出的白色渐变，静止的，别动 */
+.win-glass::before{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:
+    radial-gradient(70% 46% at 86% 0%, rgba(255,255,255,.13), transparent 62%),
+    linear-gradient(118deg, rgba(255,255,255,.07) 0%, transparent 42%);
+}
+/* 玻璃板四周的"内阴影"：模拟玻璃厚度，让窗口边缘有实体感而不是一片糊 */
+.win-glass::after{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.055),
+    inset 0 18px 40px -18px rgba(2,5,12,.5),
+    inset 0 -24px 50px -24px rgba(2,5,12,.55);
+}
+
+/* ---- 自绘标题栏 ---- */
+/* 无边框窗口没有系统标题栏，拖动 / 缩放 / 最小化全得自己做。 */
+.winbar{
+  display:none;                     /* 浏览器里不显示；壳里由 .shell-electron 打开 */
+  /* ⚠️ 必须 fixed 而不是 sticky：sticky 依赖滚动祖先，浏览器模式下 body 一滚动
+     标题栏就跟着走位，而且 sticky 元素被滚动容器裁剪后偶尔收不到鼠标事件。
+     fixed 让它永远钉在窗口顶部，拖动区的位置就和视觉位置一致。 */
+  position:fixed; top:0; left:0; right:0; z-index:60;
+  align-items:center; gap:0.71rem;
+  padding:0.5rem 0.71rem 0.5rem 1.14rem;
+  border-radius:calc(var(--win-r) - 0.3rem) calc(var(--win-r) - 0.3rem) 1.1rem 1.1rem;
+  /* 让"这里可以按住拖"一眼看得出来：一条浅色带 + 抓取光标。
+     ⚠️ 2026-10-08：整条改成**圆角条**（原来是"上圆下直、向下淡出到透明"）。
+        要看出下面两个圆角，条身必须有**覆盖整条高度**的填充 —— 原来渐变到 62% 就透明了，
+        下沿那条直边是下一层（内阴影/页头）给的，圆角根本露不出来。
+        换成极淡的玻璃填充（不是描边，仍守"无可见边框"这条规则）。 */
+  background:linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.028));
+  cursor:grab;
+}
+html.shell-electron .winbar{display:flex}
+.winbar:active{cursor:grabbing}
+/* 拖动区：整条标题栏空白处都能拖（按钮单独排除事件，见 shell.js） */
+.winbar-drag{
+  flex:1; display:flex; align-items:center; gap:0.57rem;
+  min-height:2.14rem; cursor:grab; user-select:none; -webkit-user-select:none;
+  /* 无边框透明窗口里，拖动条必须"实心可点"：给它一个最小可点高度并确保
+     不被上层装饰（.bg-orbs / .win-glass）盖住 —— 这两层都设了 pointer-events:none，
+     这里再显式声明一次，防止以后有人改样式时把这条弄坏。 */
+  pointer-events:auto;
+  touch-action:none;               /* 指针事件拖动：别让浏览器把它当滚动/缩放手势 */
+}
+.winbar-drag:active{cursor:grabbing}
+/* 三个小圆点：模仿红黄绿交通灯的位置感，只是装饰，点了没用（保持克制） */
+.winbar-drag::before{
+  content:''; width:0.79rem; height:0.79rem; border-radius:50%; flex:0 0 0.79rem;
+  background:rgba(255,255,255,.16);
+  box-shadow:1.14rem 0 0 rgba(255,255,255,.1), 2.29rem 0 0 rgba(255,255,255,.07);
+  margin-right:2.86rem;
+}
+.winbar-title{font-size:0.86rem;color:var(--txt-3);letter-spacing:.4px;white-space:nowrap}
+.winbar-tools{display:flex;align-items:center;gap:0.5rem}
+/* 透明度滑块（2026-10-05）：0=全透 100=不透明，拖动实时生效 */
+.wslider{display:flex;align-items:center;gap:0.42rem;padding:0.18rem 0.5rem;
+  border-radius:0.64rem;background:rgba(255,255,255,.05);
+  box-shadow:0 0.6px 0 rgba(255,255,255,.16) inset;cursor:default}
+/* 「失焦」透明度滑块（v1.8.16）：比主滑块窄一点，省出顶栏空间 */
+.wslider-blur{padding:0.18rem 0.42rem}
+.wslider-blur input[type=range]{width:64px}
+.wslider-cap{font-size:0.78rem;color:var(--txt-2)}
+.wslider-val{font-size:0.78rem;color:var(--txt-2);min-width:2.6em;text-align:right;
+  font-variant-numeric:tabular-nums}
+.wslider input[type=range]{-webkit-appearance:none;appearance:none;width:88px;height:3px;
+  border-radius:2px;background:rgba(255,255,255,.22);outline:none;cursor:pointer}
+.wslider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:12px;height:12px;border-radius:50%;background:#bcd3ff;border:0;
+  box-shadow:0 1px 4px rgba(2,5,12,.5)}
+.wslider input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;
+  background:#bcd3ff;border:0;box-shadow:0 1px 4px rgba(2,5,12,.5)}
+/* 标题栏按钮：比正文按钮更小更扁，且**不能被拖动区吃掉事件** */
+.wbtn{
+  padding:0.32rem 0.71rem; font-size:0.82rem; border-radius:0.64rem;
+  background:rgba(255,255,255,.05); color:var(--txt-2); border:0;
+  box-shadow:0 0.6px 0 rgba(255,255,255,.16) inset;
+}
+.wbtn:hover{background:rgba(56,189,248,.16);color:#f2f8ff;
+  box-shadow:0 0.6px 0 rgba(255,255,255,.34) inset}
+.wbtn.wicon{width:2.14rem;height:2.14rem;padding:0;display:grid;place-items:center;font-size:0.93rem}
+.wbtn.wclose:hover{background:rgba(248,113,113,.28);color:#fff;
+  box-shadow:0 0.6px 0 rgba(255,200,200,.4) inset}
+.wseg{display:inline-flex;border-radius:0.64rem;overflow:hidden;background:rgba(255,255,255,.04);
+  box-shadow:0 0.6px 0 rgba(255,255,255,.14) inset}
+.wseg button{border:0;border-radius:0;padding:0.32rem 0.64rem;font-size:0.82rem;background:transparent;
+  box-shadow:none;color:var(--txt-3)}
+.wseg button:hover{background:rgba(56,189,248,.12);box-shadow:none;color:var(--txt-2)}
+.wseg button.on{background:linear-gradient(180deg,rgba(190,228,255,.24),rgba(56,189,248,.13));color:#eaf7ff;
+  box-shadow:0 0.6px 0 rgba(255,255,255,.36) inset}
+
+/* 壳里 .app 要往上抬一层，浮在玻璃板之上；顶部留出标题栏的位置
+   （.winbar 是 fixed，不占文档流，所以要在这里手动让位）。
+   ⚠️ overflow-y:auto 是壳里**唯一**的滚动容器（html/body 都被锁住了）：
+      这样滚动条只出现在 .app 内部右上角，不会跑到窗口圆角上画方块。
+      scrollbar-gutter:stable 让有/没有滚动条时宽度一致，界面不会左右跳。 */
+html.shell-electron .app{
+  padding-top:3.1rem;
+  height:100vh;
+  overflow-y:auto;
+  overflow-x:hidden;
+  scrollbar-gutter:stable;
+}
+
+/* 壁纸退路层：只由 shell.js 在"原生材质可能不可用"时插入。
+   铺一张桌面壁纸当"窗外"，再压暗一档 —— 不依赖 DWM 材质也能有透出去的感觉。
+   桌面壁纸是张图，直接当背景会太亮太花，所以叠一层深色渐变把它压住。 */
+.win-wallpaper{
+  position:fixed; inset:0; z-index:-1; pointer-events:none;
+  border-radius:var(--win-r);
+  background-size:cover; background-position:center; background-repeat:no-repeat;
+  /* 压暗：左上更暗（放标题栏/大数字），右下透一点（能看出是壁纸） */
+  filter:saturate(.85);
+}
+.win-wallpaper::after{
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:
+    linear-gradient(180deg, rgba(6,10,20,.52), rgba(6,10,20,.42) 42%, rgba(6,10,20,.58)),
+    radial-gradient(70% 50% at 20% 0%, rgba(6,10,20,.4), transparent 70%);
+}
+
+/* ---- 环境温度卡片 ---- */
+.rowenv{grid-template-columns:minmax(0,1fr)}
+.env-card{border-radius:1.35rem}
+.env-body{display:flex;align-items:flex-start;justify-content:space-between;gap:1.43rem;flex-wrap:wrap}
+.env-main{display:flex;flex-direction:column;gap:0.21rem}
+/* 温度大数字：走"冷蓝-暖红"渐变，一眼区分冷热 */
+.env-val{display:flex;align-items:baseline;gap:0.21rem;line-height:1}
+.env-val span{font-size:3rem;font-weight:700;letter-spacing:-1.5px;
+  background:linear-gradient(135deg,#9fe0ff,#ffd6a5);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 14px rgba(160,200,255,.36))}
+.env-val small{font-size:1.07rem;color:var(--txt-2);font-weight:500}
+.env-hum{font-size:0.86rem;color:var(--txt-3)}
+.env-hum b{color:var(--txt);font-weight:600;text-shadow:var(--glow)}
+.env-side{display:grid;grid-template-columns:auto auto;gap:0.36rem 1.14rem;font-size:0.86rem;color:var(--txt-3)}
+.env-row{display:contents}
+.env-row b{color:var(--txt-2);font-weight:500;text-align:right}
+.env-where{margin-top:0.86rem;font-size:0.79rem;color:var(--txt-3);line-height:1.6}
+.env-more{margin-top:0.86rem}
+/* 温度计没读到 / 被占用：整块降低存在感，但不隐藏（用户要能看出"是它自己掉了"） */
+.env-card.stale .env-val span{background:none;color:var(--txt-3);filter:none;
+  -webkit-background-clip:initial;background-clip:initial}
+.env-card.stale #env-state{color:var(--warn)}
+.env-card.down #env-state{color:var(--bad)}
+
+/* 温湿度曲线：比功率曲线矮一些（它是个次级卡片），区间按钮沿用 .flexrow 的观感 */
+.env-ranges{margin-top:1rem;gap:0.36rem}
+.env-ranges button{padding:0.21rem 0.57rem;font-size:0.79rem}
+.env-legend .off{opacity:.34}
+.env-chart-box{height:11.4rem;position:relative}   /* 功率曲线更高，这里按比例收 */
+.env-chart-box canvas{width:100%;height:100%;display:block}
+/* 按天明细表（一天一行）。数字列右对齐 + 等宽数字，扫一眼就能比出哪天热。 */
+.env-daily{margin-top:0.86rem}
+.env-daily .env-daily-hd{font-size:0.79rem;color:var(--txt-3);letter-spacing:.2px;margin-bottom:0.29rem}
+.env-daily table{font-size:0.82rem}
+.env-daily th,.env-daily td{text-align:right;padding:0.29rem 0.43rem;font-variant-numeric:tabular-nums}
+.env-daily th:first-child,.env-daily td:first-child{text-align:left}
+.env-daily td{border-bottom:1px solid rgba(255,255,255,.035)}
+.env-daily tbody tr:hover td{background:rgba(255,255,255,.03)}
+.env-daily .tag{font-size:0.71rem;padding:0 0.36rem;margin-left:0.29rem}
+/* 温度轴用暖橙、湿度轴用青蓝，与图例的 .i 背景色一致 —— 两条线好分辨 */
+.env-tip-rows{display:grid;grid-template-columns:auto auto;gap:0.14rem 0.86rem}
+
+/* ---- 小米电风扇卡片（Wi-Fi / miIO，与蓝牙那几条链路互不影响）----------------
+   整张卡占一整行：里面是「状态大数字 + 一整套控制 + 设置」，横着再分栏会把
+   每块都挤到看不清。玻璃配方与 .env-card 完全一致（同一个类）。
+   ⚠️ 这台风扇没有电参量属性，所以**没有功率、没有用电量、也没有曲线** ——
+      卡片上那个大数字位放的是「设备回读到的开关状态」（2026-10-11 按用户要求删的）。 */
+.rowfan{grid-template-columns:minmax(0,1fr)}
+#fan-card.folded > #fan-fold-body{display:none}
+#fan-card.folded > h2{margin-bottom:0}
+/* 大数字位：放"运行中 / 已关闭"这种状态词，比 .env-val 的 3rem 数字小一档，
+   免得四个汉字在窄窗口里贴到边上。 */
+.fan-state-big{font-size:1.86rem;font-weight:700;letter-spacing:-0.6px;line-height:1.25;
+  color:var(--txt);text-shadow:var(--glow)}
+/* 没登录小米云（或还没从云端拿到 IP+密钥）时：只留一句说明 + 一个按钮。
+   一堆灰着的开关比"先登录"更让人以为是坏了。 */
+#fan-card.no-login #fan-ctl-wrap,
+#fan-card.no-login details.fan-more{display:none}
+.fan-login{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  padding:0.86rem 1rem;border-radius:0.95rem;font-size:0.93rem;color:var(--txt-2);
+  background:rgba(251,191,36,.09);
+  box-shadow:0 6px 20px rgba(2,5,12,.24), inset 0 1px 0 rgba(251,191,36,.4)}
+.fan-login-txt{flex:1 1 16rem;line-height:1.65}
+/* 电源总开关：比普通开关大一档，一眼看出这是"这台机器的主开关" */
+.switch.big{width:4.29rem;height:2.29rem;flex:0 0 4.29rem}
+.switch.big::after{width:1.71rem;height:1.71rem;top:0.21rem;left:0.21rem}
+.switch.big.on::after{left:calc(100% - 1.71rem - 0.21rem)}
+.fan-power{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.fan-power-txt{display:flex;flex-direction:column;gap:0.14rem;font-size:0.93rem;line-height:1.5}
+.fan-power-txt b{font-size:1.14rem;font-weight:650;text-shadow:var(--glow)}
+/* 无级调速滑条：和顶栏那个透明度滑块同一套观感，但更宽（要能拖出 1~100） */
+.fan-slider{display:inline-flex;align-items:center;gap:0.57rem}
+.fan-slider input[type=range]{-webkit-appearance:none;appearance:none;width:13rem;max-width:40vw;
+  height:4px;border-radius:3px;background:rgba(255,255,255,.2);outline:none;cursor:pointer}
+.fan-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:14px;height:14px;border-radius:50%;background:#bcd3ff;border:0;
+  box-shadow:0 1px 4px rgba(2,5,12,.5)}
+.fan-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+  background:#bcd3ff;border:0;box-shadow:0 1px 4px rgba(2,5,12,.5)}
+.fan-slider b{min-width:2.8em;text-align:right;color:var(--txt);font-weight:600}
+/* 定时：数字框窄一点，跟「设定」按钮凑成一组 */
+.fan-timer{display:inline-flex;align-items:center;gap:0.43rem}
+.fan-timer input[type=number]{width:5rem}
+.fan-ctl-body{margin-top:0.64rem}
+/* 写入结果提示：成功绿、失败红（.muted 只有 1 个类，这里 2 个类能压过去） */
+.fan-ctl-out.ok{color:var(--ok)}
+.fan-ctl-out.bad{color:var(--bad)}
+/* 「连接自检」/「局域网发现」的输出：等宽、可滚动，和日志同一观感 */
+.fan-probe-out{margin-top:0.57rem;font:0.79rem/1.65 "Cascadia Mono",Consolas,monospace;
+  color:var(--txt-2);white-space:pre-wrap;word-break:break-word;max-height:15rem;overflow:auto;
+  background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,.015) 45%,transparent),
+    rgba(4,8,16,.34);
+  border:1px solid var(--edge);border-radius:0.79rem;padding:0.57rem 0.71rem}
+.fan-probe-out:empty{display:none}
+.fan-probe-out b{color:var(--txt)}
+/* 滑条在浅色主题下要换个底色，否则白底上的白条看不见 */
+html.light .fan-slider input[type=range]{background:rgba(28,38,60,.22)}
+html.light .fan-slider input[type=range]::-webkit-slider-thumb{background:#3b4a6b}
+html.light .fan-slider input[type=range]::-moz-range-thumb{background:#3b4a6b}
+html.light .fan-probe-out{background:rgba(255,255,255,.55)}
+

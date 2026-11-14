@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>酷态科10号Ultra</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- 窗口外壳：只有 shell=electron 时才启用（浏览器里 body 不带这个类，
+     页面照旧是普通网页，不会被这套自绘窗口控件干扰）。
+     拖动条 / 玻璃档位 / 尺寸档位 / 最小化-全屏-关闭 都由 web/shell.js 接 Electron 的 IPC。 -->
+<div class="winbar" id="winbar" aria-hidden="true">
+  <div class="winbar-drag" id="winbar-drag">
+    <span class="winbar-title">酷态科10号Ultra</span>
+  </div>
+  <div class="winbar-tools">
+    <label class="wslider" title="窗口透明度：0 = 全透（能看清窗外），100 = 不透明">
+      <span class="wslider-cap">透</span>
+      <input type="range" id="w-opa" min="0" max="100" step="1" value="56">
+      <span class="wslider-val" id="w-opa-v">56%</span>
+    </label>
+    <!-- 失焦透明度（2026-10-08 用户要求「失焦的透明度加一个调节开关」）。
+         和左边那条**同口径**（0 = 全透，100 = 不透明），只是作用在"窗口失焦时"：
+         调的是**页面这层染色**（窗外本来就由 acrylic 磨砂着），0 最清、100 最实。
+         默认「跟随」（与左边那个滑块一致）；拖动即预览，3.5 秒后回到聚焦观感；
+         双击恢复跟随。 -->
+    <label class="wslider wslider-blur" title="失焦时的透明度：切到别的窗口后这个窗口有多实（0 = 全透，看得到窗外；100 = 不透明）。拖动即预览，松开约 3.5 秒回到聚焦观感；双击恢复「跟随」——与左边那个滑块一致">
+      <span class="wslider-cap">失焦</span>
+      <input type="range" id="w-opa-blur" min="0" max="100" step="1" value="56">
+      <span class="wslider-val" id="w-opa-blur-v">跟随</span>
+    </label>
+    <button class="wbtn" id="w-theme" title="切换深色 / 浅色主题">浅色</button>
+    <!-- ⚠️ 2026-10-08：这里原来还有一个落单的「中」按钮（id=w-size-m，没有任何 JS 绑定的死按钮）——
+         它和右边那个「小 中 大」分段控件功能重复，用户反馈"没用就删了"。 -->
+    <div class="wseg" id="w-size" title="窗口尺寸（小 / 中 / 大；窗口边缘也能直接拖）">
+      <button data-size="small">小</button><button data-size="medium">中</button><button data-size="large">大</button>
+    </div>
+    <button class="wbtn wicon" id="w-min" title="最小化">─</button>
+    <button class="wbtn wicon" id="w-max" title="全屏 / 还原">▢</button>
+    <button class="wbtn wicon wclose" id="w-close" title="关闭窗口">✕</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="mark">
+        <svg width="24" height="24" viewBox="0 0 240 240">
+          <defs><linearGradient id="hg" x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stop-color="#38bdf8"/><stop offset=".5" stop-color="#818cf8"/><stop offset="1" stop-color="#c084fc"/>
+          </linearGradient></defs>
+          <path d="M58 182 A88 88 0 1 1 182 182" fill="none" stroke="url(#hg)" stroke-width="26" stroke-linecap="round"/>
+          <path d="M132 62 L92 130 h21 l-11 48 44 -68 h-22 l16 -48 z" fill="#eaf6ff"/>
+        </svg>
+      </div>
+      <div>
+        <h1>酷态科10号Ultra</h1>
+        <div class="sub" id="dev-sub">AD1204U · 正在初始化…</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill" id="link-pill"><span class="dot" id="link-dot"></span><span id="link-txt">连接中</span></div>
+    <div class="pill" id="rssi-pill" title="蓝牙信号强度">信号 <b id="rssi">—</b></div>
+    <div class="spacer"></div>
+    <div class="hgroup">
+      <button class="ghost" id="btn-login">登录小米云</button>
+      <button class="primary" id="btn-reconnect">重连</button>
+      <button class="ghost" id="btn-yield" title="临时放开蓝牙，让手机米家能连上充电头（蓝牙同时只允许一个中心端）">让位给手机</button>
+      <button class="ghost icon-btn" id="btn-quit" title="退出应用">退出</button>
+    </div>
+  </header>
+
+  <div id="notices"></div>
+
+  <div class="grid row1">
+    <div class="card">
+      <h2>当前总功率<span class="tag" id="gauge-tag">四口合计</span></h2>
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 240 240">
+          <defs>
+            <linearGradient id="gg" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0" stop-color="#38bdf8"/><stop offset=".55" stop-color="#818cf8"/><stop offset="1" stop-color="#c084fc"/>
+            </linearGradient>
+          </defs>
+          <path d="M57.8 182.2 A88 88 0 1 1 182.2 182.2" fill="none" stroke="rgba(122,162,255,.13)"
+                stroke-width="17" stroke-linecap="round"/>
+          <path id="gauge-fg" d="M57.8 182.2 A88 88 0 1 1 182.2 182.2" fill="none" stroke="url(#gg)"
+                stroke-width="17" stroke-linecap="round" stroke-dasharray="414.7" stroke-dashoffset="414.7"
+                style="transition:stroke-dashoffset .45s cubic-bezier(.4,0,.2,1)"/>
+        </svg>
+        <div class="gauge-center">
+          <div><span class="gauge-val" id="gauge-val">0.0</span><span class="gauge-unit">W</span></div>
+          <div class="gauge-cap">当前总功率 · 满量程 <span id="gauge-max">120</span>W</div>
+        </div>
+      </div>
+      <div class="gauge-foot">
+        <div>窗口峰值 <b id="peak">0.0 W</b></div>
+        <div>在充电 <b id="active-n">0</b> 口</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>实时功率曲线<span class="tag" id="win-tag">最近 1 小时</span>
+        <label class="tag" style="cursor:pointer" title="把画出来的线做一次「3 点中值 + 指数平滑」：压掉 PPS 在两个电压档之间来回抖造成的锯齿。面板数字与存档数据始终是原始值。">
+          <input type="checkbox" id="in-smooth" checked style="vertical-align:-1px;margin-right:.3rem">平滑
+        </label>
+      </h2>
+      <div class="flexrow" id="ranges"></div>
+      <div class="legend" id="legend"></div>
+      <div class="chart-box">
+        <canvas id="chart"></canvas>
+        <div class="tip" id="tip"></div>
+      </div>
+      <div class="chart-foot">
+        <span id="chart-hint">曲线按采样点绘制 · 断档处补 0，不做跨空档连线</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ports" id="ports"></div>
+
+  <!-- 环境温度（外挂传感器）：走 LYWSD03MMC 温湿度计，独立进程 env_sensor.py 采集。
+       和功率数据完全解耦 —— 温度计读不到时只是这张卡灰掉，不影响充电头那条链路。
+       曲线与功率曲线共用同一套区间按钮（后端 /api/env/history?range= 与 /api/history 同构）。 -->
+  <div class="grid rowenv" style="margin-bottom:1rem">
+    <div class="card env-card" id="env-card">
+      <h2>环境温度<span class="tag" id="env-src">外挂传感器</span>
+        <span class="tag" id="env-win-tag">最近 1 小时</span>
+        <span class="tag" id="env-fold-sum" hidden></span>
+        <!-- 折叠开关（2026-10-08 用户要求）：用不上温度计的人可以把整张卡收成一行标题。
+             内容一个字都不删，展开即回；收起状态会记住（localStorage）。 -->
+        <button class="ghost env-fold" id="env-fold" type="button" aria-controls="env-fold-body"
+          aria-expanded="true" title="收起 / 展开整张温度计卡片（曲线和设置都还在，展开就回来）">收起</button>
+      </h2>
+      <div id="env-fold-body">
+      <div class="env-body">
+        <div class="env-main">
+          <div class="env-val"><span id="env-temp">—</span><small>℃</small></div>
+          <div class="env-hum">湿度 <b id="env-hum">—</b> %</div>
+        </div>
+        <div class="env-side">
+          <div class="env-row">状态 <b id="env-state">等待数据</b></div>
+          <div class="env-row">信号 <b id="env-signal">—</b></div>
+          <div class="env-row">电量 <b id="env-batt">—</b></div>
+          <div class="env-row">更新 <b id="env-age">—</b></div>
+          <div class="env-row">读取 <b id="env-via">—</b></div>
+        </div>
+      </div>
+      <div class="env-where" id="env-where">测的是温湿度计所在位置的空气温度，不是充电头内部温度。</div>
+
+      <!-- 温湿度曲线：区间按钮与功率曲线同一套（1 分钟 ~ 30 天）。
+           右侧「按天」把曲线换成一天一个点（日均 + 当日最高最低），
+           长区间上看"哪几天热"比几千个小时点直观得多。 -->
+      <div class="flexrow" style="justify-content:space-between;align-items:flex-start;gap:0.57rem">
+        <div class="flexrow env-ranges" id="env-ranges" style="flex:1 1 auto"></div>
+        <button class="ghost" id="btn-env-daily"
+          style="margin-top:1rem;font-size:0.79rem;padding:0.21rem 0.71rem">按天</button>
+        <label class="tag" style="cursor:pointer;margin-top:1rem"
+          title="把温湿度曲线做一次平滑（3 点中值 + 指数平滑）：设备每小时只记一条，台阶感强。只影响画出来的线，悬停数值 / 按天明细 / 导出 CSV 都还是原始值。">
+          <input type="checkbox" id="env-smooth" checked style="vertical-align:-1px;margin-right:.3rem">平滑
+        </label>
+      </div>
+      <div class="legend env-legend" id="env-legend">
+        <span data-k="t"><i style="background:#ffb27a"></i>温度 ℃</span>
+        <span data-k="h"><i style="background:#5cc9f5"></i>湿度 %</span>
+      </div>
+      <div class="chart-box env-chart-box">
+        <canvas id="env-chart"></canvas>
+        <div class="tip" id="env-tip"></div>
+      </div>
+      <div class="chart-foot"><span id="env-chart-hint">温度与湿度共用时间轴 · 空档处断开连线（不补 0）</span></div>
+      <!-- 按天明细表：只在「按天」打开时出现。曲线看趋势，具体数值还得落到表上。 -->
+      <div class="env-daily" id="env-daily" hidden></div>
+
+      <details class="sec env-more">
+        <summary>温度计设置</summary>
+        <div class="ctl-grid" style="margin-top:0.64rem">
+          <label class="sw-row">设备地址<input type="text" id="env-addr" placeholder="A4:C1:38:3C:25:A2" style="width:11.4rem"></label>
+          <label class="sw-row">轮询间隔<input type="number" id="env-int" min="30" max="600" step="10" style="width:5.86rem"> 秒</label>
+        </div>
+        <div class="flexrow" style="margin-top:0.64rem">
+          <button class="ghost" id="env-save">保存并重启温度计</button>
+          <button class="ghost" id="env-probe">探测广播</button>
+          <button class="ghost" id="env-toggle">暂停温度计</button>
+        </div>
+        <div class="flexrow" style="margin-top:0.64rem">
+          <button class="ghost" id="env-hist-read" title="读出温湿度计内置的最近 152 小时历史（每小时一条），合并进曲线。慢操作，约几分钟，期间会占用它的蓝牙。">读取设备历史</button>
+          <span class="muted" id="env-hist-status" style="font-size:0.82rem;align-self:center"></span>
+        </div>
+        <div class="muted" style="font-size:0.82rem;margin-top:0.64rem;line-height:1.7" id="env-note">
+          温湿度计是<b>连接型设备</b>：读取时会短暂占用它的蓝牙，所以轮询间隔默认 90 秒，
+          这段时间里手机米家连不上它（和充电头是同样的「一个中心端」限制）。
+          连接读取<b>不需要密钥</b>，也不用刷机。
+        </div>
+      </details>
+      </div><!-- /#env-fold-body -->
+    </div>
+  </div>
+
+  <!-- 小米电风扇：和上面两张卡**完全不同的链路** —— 风扇是 Wi-Fi（miIO，UDP + AES），
+       不是蓝牙。它由独立进程 fan_collector.py 采集，同样可失败：风扇连不上只是这张卡灰掉，
+       充电头与温湿度计一点都不受影响。
+       ⚠️ 这台风扇没有功率传感器、也没有电量统计（规格表逐项核过），所以这张卡
+          **不做功率、不做用电量、也不画曲线** —— 只回显设备读回来的状态，并把开关写进去。 -->
+  <div class="grid rowfan" style="margin-bottom:1rem">
+    <div class="card env-card" id="fan-card">
+      <h2>小米电风扇<span class="tag" id="fan-link-tag">Wi-Fi · miIO</span>
+        <span class="tag" id="fan-model-tag">—</span>
+        <span class="tag" id="fan-fold-sum" hidden></span>
+        <button class="ghost env-fold" id="fan-fold" type="button" aria-controls="fan-fold-body"
+          aria-expanded="true" title="收起 / 展开整张风扇卡片（控制与设置都还在，展开就回来）">收起</button>
+      </h2>
+      <div id="fan-fold-body">
+
+      <!-- 还没登录小米云：风扇是 Wi-Fi 设备，必须先从云端拿到它的 IP 和密钥才能通信，
+           所以这里只露一条说明 + 一个按钮，别的控件全部藏起来（看着像坏了最烦人）。 -->
+      <div class="fan-login" id="fan-login-hint" hidden>
+        <div class="fan-login-txt" id="fan-login-msg">风扇走 Wi-Fi，需要先从米家云取到它的 IP 和密钥。</div>
+        <button class="primary" id="btn-fan-login">登录小米云</button>
+      </div>
+
+      <div id="fan-main">
+        <div class="env-body">
+          <div class="env-main">
+            <div class="fan-state-big" id="fan-state">等待数据</div>
+            <div class="env-hum">状态来自<b>设备回读</b> · 这台风扇没有功率传感器与电量统计</div>
+          </div>
+          <div class="env-side">
+            <div class="env-row">风型 <b id="fan-mode">—</b></div>
+            <div class="env-row">档位 <b id="fan-level">—</b></div>
+            <div class="env-row">更新 <b id="fan-age">—</b></div>
+            <div class="env-row">设备 <b id="fan-dev">—</b></div>
+          </div>
+        </div>
+        <div class="env-where" id="fan-where">
+          走家里的 Wi-Fi 直连（miIO），不经过米家云 —— 所以它能和手机米家同时用，不像充电头那样要「让位」。
+        </div>
+      </div>
+
+      <!-- 风扇控制：每一次写入都**回读确认**，界面上的开关状态来自设备回读值，
+           不是"我以为写成功了"。 -->
+      <details class="sec fan-ctl" id="fan-ctl-wrap">
+        <summary>风扇控制（开关 / 风速 / 摆风 / 定时）</summary>
+        <div class="fan-ctl-body">
+          <div class="fan-power">
+            <div class="switch big" id="sw-fan-power" role="switch" aria-checked="false"></div>
+            <div class="fan-power-txt"><b id="fan-power-lbl">关闭</b>
+              <span class="muted" id="fan-power-note">所有开关的显示状态都来自写入后的回读</span></div>
+          </div>
+          <div class="ctl-grid" style="margin-top:0.86rem">
+            <div class="sw-row">风速（1~100 无级）
+              <span class="fan-slider"><input type="range" id="fan-speed" min="1" max="100" step="1" value="50">
+                <b id="fan-speed-val">—</b></span>
+            </div>
+            <div class="sw-row">档位
+              <span class="seg" id="fan-seg-level"></span>
+            </div>
+            <div class="sw-row">风型
+              <span class="seg" id="fan-seg-mode"></span>
+            </div>
+            <div class="sw-row">左右摆风<div class="switch" id="sw-fan-osc" role="switch" aria-checked="false"></div></div>
+            <div class="sw-row">摆风夹角<select id="fan-angle"></select></div>
+            <div class="sw-row">定时（0~480 分钟）
+              <span class="fan-timer"><input type="number" id="fan-timer" min="0" max="480" step="10" value="0">
+                <button class="ghost" id="btn-fan-timer">设定</button></span>
+            </div>
+            <div class="sw-row">指示灯<div class="switch" id="sw-fan-led" role="switch" aria-checked="false"></div></div>
+            <div class="sw-row">提示音<div class="switch" id="sw-fan-buzzer" role="switch" aria-checked="false"></div></div>
+            <div class="sw-row">童锁（锁物理按键）<div class="switch" id="sw-fan-lock" role="switch" aria-checked="false"></div></div>
+          </div>
+          <div class="flexrow" style="margin-top:0.86rem">
+            <button class="ghost" id="btn-fan-refresh">刷新一次</button>
+            <span class="muted" id="fan-ctl-out" style="align-self:center;font-size:0.86rem"></span>
+          </div>
+        </div>
+      </details>
+
+      <details class="sec env-more fan-more">
+        <summary>风扇设置</summary>
+        <div class="ctl-grid" style="margin-top:0.64rem">
+          <label class="sw-row">轮询间隔<input type="number" id="fan-int" min="0.5" max="30" step="0.5" style="width:5.86rem"> 秒</label>
+        </div>
+        <div class="flexrow" style="margin-top:0.64rem">
+          <button class="ghost" id="fan-cfg-save">保存并重启风扇采集</button>
+          <button class="ghost" id="btn-fan-probe" title="连一次、把属性读出来就退出（不进常态轮询）">连接自检</button>
+          <button class="ghost" id="btn-fan-discover" title="向局域网广播一次，看看有哪些 miIO 设备在线（拿不到密钥，只能确认它在不在网上）">局域网发现</button>
+        </div>
+        <div class="muted" style="font-size:0.82rem;margin-top:0.64rem;line-height:1.7" id="fan-dev-note">
+          设备信息在登录小米云时写进 <b>data\fan.token</b>（含 IP 和 16 字节密钥），
+          采集器读的是 <b>data\fan.json</b>（密钥只写文件、不进命令行）。
+        </div>
+        <div id="fan-probe-out" class="fan-probe-out"></div>
+      </details>
+
+      <details class="sec env-more fan-more">
+        <summary>风扇原始属性（值不经过任何换算）</summary>
+        <dl class="kv" id="fan-raw"></dl>
+      </details>
+
+      </div><!-- /#fan-fold-body -->
+    </div>
+  </div>
+
+  <div class="grid row2" style="margin-bottom:1rem">
+    <div class="card">
+      <h2>控制充电头<span class="tag" id="ctl-tag">写入需要蓝牙已连接</span></h2>
+
+      <div class="sec-h">端口开关</div>
+      <div class="ctl-grid" id="ctl-ports"></div>
+      <div class="flexrow" style="margin-top:0.64rem">
+        <button class="ghost" id="btn-all-on">全部开启</button>
+        <button class="ghost" id="btn-all-off">全部关闭</button>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h">自动断电<span class="muted"> · 空载（有电压没电流）就关掉那个口</span></div>
+        <!-- 开关用和「端口开关」同一个 .switch 组件：同一个页面上两套开关观感会很怪 -->
+        <div class="sw-row"><b>启用</b><div class="switch" id="ao-on"></div></div>
+        <div class="flexrow" style="margin-top:0.57rem;font-size:0.93rem;color:var(--txt-2);flex-wrap:wrap;gap:0.43rem;align-items:center">
+          <span class="muted">电压 ≥</span>
+          <input type="number" id="ao-v" min="3" max="20" step="0.5" style="width:4.2rem"> V
+          <span class="muted">且电流 ≤</span>
+          <input type="number" id="ao-i" min="0" max="0.5" step="0.01" style="width:4.2rem"> A
+          <span class="muted">持续</span>
+          <input type="number" id="ao-sec" min="5" max="3600" step="5" style="width:4.2rem"> 秒
+        </div>
+        <label class="sw-row">关闭后
+          <input type="number" id="ao-restore" min="0" max="240" step="1" style="width:4.2rem">
+          分钟自动恢复<span class="muted">（0 = 不恢复，需手动开）</span></label>
+        <label class="sw-row"><input type="checkbox" id="ao-skipa">
+          USB-A 的「小电流模式」开着时不关 A 口<span class="muted">（手环/耳机本来就 0A）</span></label>
+        <div class="muted" id="ao-state" style="margin-top:0.4rem">尚未触发</div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h">协议开关<span class="muted"> · 逐口启用/关闭快充协议</span></div>
+        <div class="ctl-grid" id="ctl-proto"></div>
+        <div class="flexrow" style="margin-top:0.64rem">
+          <button class="ghost" id="btn-proto-on">全部开启</button>
+          <button class="ghost" id="btn-proto-off">全部关闭</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h">设备设置</div>
+        <div class="ctl-grid">
+          <label class="sw-row">场景模式<select id="sel-scene"></select></label>
+          <label class="sw-row">息屏时间<select id="sel-screen"></select></label>
+          <label class="sw-row">屏幕语言<select id="sel-lang"></select></label>
+          <div class="sw-row">USB-A 小电流<div class="switch" id="sw-usba" data-piid="15"></div></div>
+          <div class="sw-row">空闲自动熄屏<div class="switch" id="sw-idle" data-piid="19"></div></div>
+          <div class="sw-row">锁定屏幕方向<div class="switch" id="sw-dir" data-piid="20"></div></div>
+        </div>
+        <div class="flexrow" style="margin-top:0.86rem">
+          <button class="ghost" id="btn-temp-watch">看温度 · 屏幕常亮</button>
+          <button id="btn-defaults">恢复常用默认</button>
+        </div>
+        <div class="muted" style="font-size:0.82rem;margin-top:0.64rem;line-height:1.7" id="temp-hint">
+          <b>温度在充电头自己的屏幕上</b>：触摸键切到「界面二 · 核心温度」，40℃绿 / 60℃黄 / 80℃红。
+          蓝牙通道里<b>没有温度属性</b>（官方规格表 21 项逐项核过、未知属性也扫过），
+          所以 App 读不到温度，也没法把数值推到屏幕上 —— 屏幕显示什么由固件决定。<br>
+          这颗按钮做的是<b>让屏幕别黑</b>：把「息屏时间」设为常亮、并关掉「空闲自动熄屏」，
+          再按一次还原成原来的值（设备设置是持久的，所以还原要手动按）。
+        </div>
+      </div>
+
+      <details class="sec" style="margin-top:1.2rem;padding-top:0.95rem">
+        <summary style="cursor:pointer;font-size:0.86rem;color:var(--txt-2)">高级 · 原始属性 / 扩展读取</summary>
+
+        <div class="ctl-grid" style="margin-top:0.79rem">
+          <label class="sw-row">协议控制字 2.7<input type="text" id="in-pc" placeholder="0x00" style="width:5.86rem"></label>
+          <label class="sw-row">端口关闭设置 2.8<input type="text" id="in-p8" placeholder="0x00" style="width:5.86rem"></label>
+          <label class="sw-row">协议开关掩码 2.21<input type="text" id="in-pce" placeholder="0x00000000" style="width:7.86rem"></label>
+        </div>
+        <div class="flexrow" style="margin-top:0.64rem">
+          <button class="ghost" id="btn-adv">写入上面三项</button>
+          <button class="ghost" id="btn-ext">读取扩展属性 2.8</button>
+        </div>
+
+        <div class="muted" style="font-size:0.82rem;margin-top:0.64rem;line-height:1.7" id="ext-out">
+          2.7 / 2.8 的语义没查清，只在明确知道要写什么时手动填原始数值；2.21 就是上面的协议开关面板
+          （位定义已逐位实测，留这个输入框只是为了整块复原）。<br>
+          <b>本机固件没有「定时关闭」</b>：官方规格表把它记在 2.9–2.12（u16，0–1440 分钟），
+          但实测这四个属性不存在 —— 请求会被设备静默丢弃，米家 App 里也没有对应开关。<br>
+          「读取扩展属性」会用一次「把 2.7 换成 2.8」的 15 项替换形状去问 2.8 ——
+          这台设备只认<b>正好 15 项</b>的请求，所以常态轮询里塞不进它。
+        </div>
+        <div id="ext-res" style="font-size:0.82rem;margin-top:0.57rem;line-height:1.7"></div>
+
+        <div class="flexrow" style="margin-top:0.79rem">
+          <button class="ghost" id="btn-sweep">扫描隐藏属性 / 温度</button>
+          <button class="danger" id="btn-reset">恢复出厂设置</button>
+        </div>
+        <div class="muted" style="font-size:0.82rem;margin-top:0.64rem;line-height:1.7" id="sweep-out">
+          扫描会先做一次通道自检（用完整属性表验证链路是通的），再把 siid=2 的未知属性
+          各问一遍，并列出 GATT 全表、侦听厂商 notify。会暂停采集器约半分钟。<br>
+          「恢复出厂设置」调用设备自带的 MIOT action #1，会覆盖端口开关、场景、息屏、协议开关等
+          全部设置，需要二次确认。
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>用电量统计<span class="tag" id="energy-tag">本机积分</span></h2>
+      <div class="stat-row">
+        <div class="stat hi"><div class="k">今日用电</div><div class="v"><span id="e-today-kwh">0.000</span><small>度</small></div>
+          <div class="sub"><span id="e-today">0.00</span> Wh · <span id="e-today-mah">0.00</span> mAh</div></div>
+        <div class="stat"><div class="k">累计用电</div><div class="v"><span id="e-total-kwh">0.000</span><small>度</small></div>
+          <div class="sub"><span id="e-total">0.00</span> Wh · <span id="e-total-mah">0.00</span> mAh</div></div>
+        <div class="stat"><div class="k">本次会话</div><div class="v"><span id="e-sess-kwh">—</span><small>度</small></div>
+          <div class="sub"><span id="e-sess">—</span> Wh · <span id="e-sess-mah">—</span> mAh</div></div>
+      </div>
+      <div class="muted" style="font-size:0.82rem;margin:-0.43rem 0 0.86rem;line-height:1.7">
+        <b>大数字就是「度」</b>（电费单口径），下面小字同时给 Wh 和 mAh（毫安）。
+        <b>1 度</b> = 1 kWh = 1000 Wh；<b>mAh</b> = Wh ÷ 3.7 V（锂电芯标称）× 1000，
+        也就是充电宝上标的那个「毫安」：<b>10000 mAh ≈ 37 Wh</b>。两个折算都是<b>理想值</b>，没算升压 / 降压与发热损耗。
+        它们都只是<b>这台充电头自己</b>的用电量，不含电脑和别的电器 —— 想对上电表，只比较充电头这一路的读数变化。
+      </div>
+      <div class="ebars" id="ebars"></div>
+      <div class="muted" style="font-size:0.82rem;margin-top:0.79rem;line-height:1.7">
+        充电头本身没有"累计电量"属性可读，只能对瞬时功率做时间积分（米家 App 同样是积分思路，区别是本机结果会落盘、重启不丢）。
+        两次采样间隔超过 60 秒的那一段会被整段丢弃 —— 宁可少算，也不瞎算。
+      </div>
+      <div class="sec">
+        <div class="sec-h">每口累计分解</div>
+        <dl class="kv" id="e-ports"></dl>
+      </div>
+      <div class="sec">
+        <div class="sec-h">最近充电会话</div>
+        <dl class="kv" id="e-sessions"></dl>
+      </div>
+      <div class="sec">
+        <div class="sec-h">
+          每次插拔单独记账<span class="tag">拔出后结算</span></div>
+        <div class="muted" style="font-size:0.8rem;margin:-0.21rem 0 0.5rem;line-height:1.65">
+          按端口字的“在用”位判定插拔（不是看功率 —— 充饱后功率掉到 0 但线还插着，那不算拔出）。
+          插上→拔掉算一次，这段时间的电量单独计，和“这口一共充了多少”分开看。
+        </div>
+        <dl class="kv" id="e-plugs"></dl>
+      </div>
+      <div class="sec">
+        <div class="sec-h">导出 CSV（带 UTF-8 BOM，Excel 直接打开不乱码）</div>
+        <div class="flexrow">
+          <button class="ghost" data-export="days">每日电量</button>
+          <button class="ghost" data-export="sessions">充电会话</button>
+          <button class="ghost" data-export="ports">分口累计</button>
+          <button class="ghost" data-export="plugs">插拔记录</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 异常检查：每次"有电压没电流"都记一条（和自动断电的开关无关，记录永远做） -->
+  <div class="grid" style="grid-template-columns:1fr;margin-bottom:1rem">
+    <div class="card">
+      <h2>异常检查<span class="tag" id="ao-check-tag">有电压 · 没电流</span></h2>
+      <div class="stat-row">
+        <div class="stat hi">
+          <div class="k">今日空载</div>
+          <div class="v"><span id="ao-today">0</span><small>次</small></div>
+          <div class="sub">其中自动关闭 <span id="ao-cut-today">0</span> 次</div>
+        </div>
+        <div class="stat">
+          <div class="k">今日空载总时长</div>
+          <div class="v"><span id="ao-idle">0</span><small>分钟</small></div>
+          <div class="sub">插着但没取电的时间</div>
+        </div>
+        <div class="stat">
+          <div class="k">累计记录</div>
+          <div class="v"><span id="ao-total">0</span><small>条</small></div>
+          <div class="sub">最多保留最近 500 条</div>
+        </div>
+      </div>
+      <div class="muted" id="ao-open" style="font-size:0.82rem;margin:-0.43rem 0 0.7rem;line-height:1.7">
+        判定口径：电压 ≥ 5 V 且电流 ≤ 0.02 A（可按上方的参数调整）。一次空载从"开始满足"记到
+        "重新取电 / 拔掉 / 被自动关闭"为止，所以不会每秒刷一条。
+      </div>
+      <div class="scroll" style="max-height:300px;overflow:auto">
+        <table id="ao-table">
+          <thead><tr><th>时间</th><th>端口</th><th>电压</th><th>电流</th><th>持续</th><th>处理</th></tr></thead>
+          <tbody><tr><td colspan="6" class="muted">还没有记录 —— 插上一个不取电的设备就会出现</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flexrow" style="margin-top:0.64rem">
+        <button class="ghost" id="btn-ao-refresh">刷新</button>
+        <button class="ghost" id="btn-ao-clear">清空记录</button>
+        <span class="muted" id="ao-file" style="font-size:0.79rem"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid row3">
+    <div class="card">
+      <h2>协议协商</h2>
+      <dl class="kv" id="neg"></dl>
+      <div class="sec">
+        <div class="sec-h">采集设置</div>
+        <div class="flexrow">
+          <label class="muted" style="font-size:0.86rem">采样间隔
+            <input type="number" id="in-interval" min="0.5" max="10" step="0.5"> 秒
+          </label>
+          <button id="btn-cfg">应用</button>
+        </div>
+        <div class="flexrow" style="margin-top:0.64rem;gap:1.14rem">
+          <label class="sw-row">任务栏功率图标
+            <input type="checkbox" id="in-tray" style="width:auto;accent-color:#38bdf8">
+          </label>
+          <label class="sw-row" title="充满、断线时由任务栏图标弹气泡提醒">事件通知
+            <input type="checkbox" id="in-notify" style="width:auto;accent-color:#38bdf8">
+          </label>
+          <label class="sw-row">托盘显示
+            <select id="in-traymode" style="width:auto;padding:0.14rem 0.29rem">
+              <option value="total">仅总功率</option>
+              <option value="all">全部功率（图标轮流）</option>
+              <option value="panel">一行面板（四口+总）</option>
+            </select>
+          </label>
+          <label class="sw-row" title="在「启动」文件夹里放一个快捷方式，开机自动运行；随时能在资源管理器里删掉">开机自启动
+            <select id="in-autostart" style="width:auto;padding:0.14rem 0.29rem">
+              <option value="off">关闭</option>
+              <option value="tray">后台运行（不弹窗）</option>
+              <option value="window">打开窗口</option>
+            </select>
+          </label>
+          <button class="ghost" id="btn-shortcut">创建桌面快捷方式</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>设备设置</h2>
+      <dl class="kv" id="settings"></dl>
+    </div>
+    <div class="card">
+      <h2>采集器日志<span class="tag" id="log-tag"></span></h2>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <h2>原始属性<span class="tag">siid=2 全部字段（值不经过任何换算）</span></h2>
+    <div class="scroll" style="max-height:290px;overflow:auto">
+      <table id="raw"><thead><tr><th>属性</th><th>类型</th><th>值</th><th>原始字节</th><th>状态</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="table-foot">共 <b id="raw-n">0</b> 个字段 · 数值未经任何换算</div>
+  </div>
+  <div id="ver-line" class="muted" style="text-align:center;font-size:0.79rem;margin:1.14rem 0 0.57rem"></div>
+</div>
+<!-- 全屏背景光斑：固定不动，让玻璃面板从上面滑过时有东西可"透"。纯装饰，不接事件。 -->
+<div class="bg-orbs" aria-hidden="true"><i></i><i></i><i></i></div>
+
+<div class="layer hidden" id="login-layer">
+  <div class="modal">
+    <h3>登录小米云</h3>
+    <p>用手机上的<b>米家 App</b> 扫描下面的二维码并确认授权。只需一次，之后本应用会把 12 字节的 BLE 密钥保存在本地
+      <code>data\cuktech.token</code>，不会再联网。<br>
+      同一次扫码还会把<b>小米电风扇</b>的局域网 IP 和 16 字节密钥（Wi-Fi / miIO 设备）一起取回来，
+      存到 <code>data\fan.token</code> —— 两把钥匙在同一条云端设备列表里，不用扫两次。</p>
+    <div class="qrbox" id="qrbox"><div class="ph">尚未生成二维码</div></div>
+    <div id="login-msg" class="muted" style="font-size:0.89rem;margin-bottom:1rem;min-height:1.29rem;white-space:pre-wrap"></div>
+    <!-- 网络自检结果：登录报证书错时点「网络自检」，这里给一句能动手的结论 -->
+    <div class="login-diag" id="login-diag" style="display:none"></div>
+    <div class="flexrow" style="justify-content:flex-end">
+      <button class="ghost" id="btn-login-diag"
+        title="测试到小米服务器的 HTTPS 连接：证书链正常吗？有没有被代理/杀软/公司网络解密？">网络自检</button>
+      <button class="ghost" id="btn-login-close">取消</button>
+      <button class="primary" id="btn-login-start">生成二维码</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="shell.js"></script>
+</body>
+</html>
