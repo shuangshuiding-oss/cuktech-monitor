@@ -100,4 +100,4 @@ MIT，见 [LICENSE](LICENSE)。第三方代码与资料的出处见 [THIRD_PARTY
 ---
 
 `使用说明.txt` 是发给最终用户的完整手册，**GBK 编码 + CRLF**（Windows 记事本直接可读）；
-GitHub 网页预览它可能会乱码，看 `软件介绍.md` 更舒服。
+GitHub 网页预览它可能会乱码，看 `软件介绍.md` 更舒服。版本历史见 [CHANGELOG.md](CHANGELOG.md)。
