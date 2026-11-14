@@ -8,11 +8,13 @@
 
 ![界面预览](docs/preview.png)
 
-```
-npm install          # 只有 electron / koffi 两个运行期依赖
-python -m venv .venv && .venv\Scripts\pip install -r requirements.txt
-双击「启动酷态科10号Ultra.bat」
-```
+## 下载
+
+不想配环境就用便携包：[**Releases**](https://github.com/shuangshuiding-oss/cuktech-monitor/releases/latest)
+里下 `酷态科10号Ultra-便携版-vX.Y.Z-自解压.exe`，双击解压即用 —— 自带 Node 与 Python 运行时，
+目标机器不需要装任何东西。
+
+想从源码跑，见下面「从源码跑」。
 
 ## 它能做什么
 
